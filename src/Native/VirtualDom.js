@@ -1,15 +1,12 @@
-var _elm_lang$virtual_dom$VirtualDom_Debug$wrap;
-var _elm_lang$virtual_dom$VirtualDom_Debug$wrapWithFlags;
+"use strict";
 
-var _elm_lang$virtual_dom$Native_VirtualDom = function() {
+// pulp build will "forget" top-level vars
+const STYLE_KEY = 'STYLE';
+const EVENT_KEY = 'EVENT';
+const ATTR_KEY = 'ATTR';
+const ATTR_NS_KEY = 'ATTR_NS';
 
-var STYLE_KEY = 'STYLE';
-var EVENT_KEY = 'EVENT';
-var ATTR_KEY = 'ATTR';
-var ATTR_NS_KEY = 'ATTR_NS';
-
-var localDoc = typeof document !== 'undefined' ? document : {};
-
+const localDoc = typeof document !== 'undefined' ? document : {};
 
 ////////////  VIRTUAL DOM NODES  ////////////
 
@@ -23,14 +20,6 @@ function text(string)
 }
 
 
-function node(tag)
-{
-	return F2(function(factList, kidList) {
-		return nodeHelp(tag, factList, kidList);
-	});
-}
-
-
 function nodeHelp(tag, factList, kidList)
 {
 	var organized = organizeFacts(factList);
@@ -39,12 +28,12 @@ function nodeHelp(tag, factList, kidList)
 
 	var children = [];
 	var descendantsCount = 0;
-	while (kidList.ctor !== '[]')
+	for (var i = 0; i < kidList.length; i++)
 	{
-		var kid = kidList._0;
+		// xxx use read-only array as-is?
+		var kid = kidList[i];
 		descendantsCount += (kid.descendantsCount || 0);
 		children.push(kid);
-		kidList = kidList._1;
 	}
 	descendantsCount += children.length;
 
@@ -67,12 +56,11 @@ function keyedNode(tag, factList, kidList)
 
 	var children = [];
 	var descendantsCount = 0;
-	while (kidList.ctor !== '[]')
+	for (var i = 0; i < kidList.length; i++)
 	{
-		var kid = kidList._0;
-		descendantsCount += (kid._1.descendantsCount || 0);
+		var kid = kidList[i];
+		descendantsCount += (kid.value1.descendantsCount || 0);
 		children.push(kid);
-		kidList = kidList._1;
 	}
 	descendantsCount += children.length;
 
@@ -152,9 +140,9 @@ function organizeFacts(factList)
 {
 	var namespace, facts = {};
 
-	while (factList.ctor !== '[]')
+	for (var i = 0; i < factList.length; i++)
 	{
-		var entry = factList._0;
+		var entry = factList[i];
 		var key = entry.key;
 
 		if (key === ATTR_KEY || key === ATTR_NS_KEY || key === EVENT_KEY)
@@ -167,11 +155,10 @@ function organizeFacts(factList)
 		{
 			var styles = facts[key] || {};
 			var styleList = entry.value;
-			while (styleList.ctor !== '[]')
+			for (var j = 0; j < styleList.length; j++)
 			{
-				var style = styleList._0;
-				styles[style._0] = style._1;
-				styleList = styleList._1;
+				var style = styleList[j];
+				styles[style.value0] = style.value1;
 			}
 			facts[key] = styles;
 		}
@@ -190,7 +177,6 @@ function organizeFacts(factList)
 		{
 			facts[key] = entry.value;
 		}
-		factList = factList._1;
 	}
 
 	return {
@@ -1682,7 +1668,7 @@ function makeDebugStepper(initialModel, view, eventNode, parentNode, moduleName,
 		}
 
 		// switch to document of popout
-		localDoc = popoutRef.doc;
+		var localDoc = popoutRef.doc;
 
 		var next = view(model);
 		var patches = diff(curr, next);
@@ -1703,7 +1689,7 @@ function openDebugWindow(moduleName, popoutRef, virtualNode, eventNode)
 	var debugWindow = window.open('', '', 'width=' + w + ',height=' + h + ',left=' + x + ',top=' + y);
 
 	// switch to window document
-	localDoc = debugWindow.document;
+	var localDoc = debugWindow.document;
 
 	popoutRef.doc = localDoc;
 	localDoc.title = 'Debugger - ' + moduleName;
@@ -1855,27 +1841,57 @@ var mostEvents = [
 var allEvents = mostEvents.concat('wheel', 'scroll');
 
 
-return {
-	node: node,
-	text: text,
-	custom: custom,
-	map: F2(map),
 
-	on: F3(on),
-	style: style,
-	property: F2(property),
-	attribute: F2(attribute),
-	attributeNS: F3(attributeNS),
-	mapProperty: F2(mapProperty),
 
-	lazy: F2(lazy),
-	lazy2: F3(lazy2),
-	lazy3: F4(lazy3),
-	keyedNode: F3(keyedNode),
+//  PURESCRIPT SPECIFIC
 
-	program: program,
-	programWithFlags: programWithFlags,
-	staticProgram: staticProgram
-};
 
-}();
+function identity(x) {
+	return x;
+}
+
+// purescript version handles the currying on the purescript side
+// it's identity, but JavaScript
+function F2(x) {
+	return x;
+}
+
+// no debug wrappers, can't handle it yet
+var programNoDebug = function(impl) {
+	return program(identity, impl);
+}
+
+
+function renderTopLevel (vNode) {
+	var eventNode = { tagger: identity, parent: undefined };
+	return render(vNode, eventNode);
+}
+
+function applyPatchesFn3 (domNode, oldVirtualNode, patches) {
+	var eventNode = { tagger: identity, parent: undefined };
+	return applyPatches(domNode, oldVirtualNode, patches, eventNode);
+
+}
+
+exports.nodeFn3 = nodeHelp;
+exports.text = text;
+exports.mapFn2 = map;
+exports.propertyFn2 = property;
+exports.style = style;
+exports.attributeFn2 = attribute;
+exports.attributeFn3 = attributeNS;
+exports.mapPropertyFn2 = mapProperty;
+exports.style = style;
+exports.onFn3 = on;
+exports.lazyFn2 = lazy;
+exports.lazy2Fn3 = lazy2;
+exports.lazy3Fn4 = lazy3;
+exports.keyedNodeFn3 = keyedNode;
+
+exports.render = renderTopLevel;
+exports.diffFn2 = diff;
+exports.applyPatchesFn3 = applyPatchesFn3;
+
+exports.programFn2 = program;
+exports.programWithFlagsFn2 = programWithFlags;
+exports.programNoDebug = programNoDebug;
