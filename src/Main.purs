@@ -1,5 +1,6 @@
 module Main where
 
+import Bonsai
 import Control.Monad.Eff
 import Control.Monad.Eff.Console
 import DOM
@@ -18,34 +19,30 @@ import Prelude
 
 -- main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = unsafePartial $ do
-  log "Hello, world!"
-  Just main  <- elementById (ElementId "main")
-  let v1 = node "div" [] [node "h1" [] [text "Jodok"]]
-  v1Dom <- renderInitial main v1
-  logAny v1Dom
+  Just main  <- domElementById (ElementId "main")
+  cfg <- programEnv update view
+  ps  <- programState main cfg 0
+  queueCommand cfg (Cmd [Increment])
 
-  let v2 = node "div" [] [ node "h1" [] [text "Simon"]
-                         , node "p" [] [text "Ist das neue Baby im Haus ..."]
-                         ]
-  let p = diff v1 v2
-  logAny p
-  v2Dom <- applyPatches v1Dom v1 p
+  ps' <- execProgram step cfg ps
+  log "Final state"
+  logAny ps'
 
-  logAny v2Dom
+
+type Model = Int
+
+data Msg
+  = Increment
+  | Decrement
+
+update :: Model -> Msg -> Model
+update model Increment = model + 1
+update model Decrement = model - 1
+
+view :: Model -> VNode Msg
+view model = text $ show model
 
 
 -- logAny :: forall eff. Eff (console::CONSOLE|eff) Unit
 logAny x =
   traceAny x \_ -> pure unit
-
-elementById :: forall eff. ElementId -> Eff (dom :: DOM | eff) (Maybe Element)
-elementById id =
-  window >>=
-  document >>=
-  htmlDocumentToDocument >>> documentToNonElementParentNode >>> getElementById id
-
-
-renderInitial main node = do
-  let elem = render node
-  _ <- appendChild (elementToNode elem) (elementToNode main)
-  pure elem

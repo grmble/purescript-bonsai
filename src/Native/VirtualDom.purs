@@ -1,13 +1,9 @@
 module Native.VirtualDom
-  ( Node
+  ( VNode
   , Property
   , Options
   , JsonDecoder
   , Patch
-  , Cmd(..)
-  , Sub(..)
-  , Program
-  , Never
   , node
   , text
   , map
@@ -26,23 +22,22 @@ module Native.VirtualDom
   , render
   , diff
   , applyPatches
-  -- , program
   )
 where
 
 import Prelude
 
-import Control.Monad.Eff
+import Control.Monad.Eff (Eff)
 import Data.Function.Uncurried (Fn2, Fn3, Fn4, runFn2, runFn3, runFn4)
 import Data.Foreign (Foreign, toForeign)
 import Data.Tuple (Tuple)
-import DOM
+import DOM (DOM)
 import DOM.Node.Types (Element)
 
 
 -- | An immutable chunk of data representing a DOM node. This can be HTML or SVG.
-newtype Node msg =
-  Node Foreign
+newtype VNode msg =
+  VNode Foreign
 
 -- | Create a DOM node with a tag name, a list of HTML properties that can
 -- | include styles and event listeners, a list of CSS properties like `color`, and
@@ -59,18 +54,18 @@ newtype Node msg =
 -- |      node "div"
 -- |        [ property "id" (Json.string "greeting") ]
 -- |        [ text "Hello!" ]
-node :: forall msg. String -> Array (Property msg) -> Array (Node msg) -> Node msg
+node :: forall msg. String -> Array (Property msg) -> Array (VNode msg) -> VNode msg
 node =
   runFn3 nodeFn3
 
-foreign import nodeFn3 :: forall msg. Fn3 String (Array (Property msg)) (Array (Node msg)) (Node msg)
+foreign import nodeFn3 :: forall msg. Fn3 String (Array (Property msg)) (Array (VNode msg)) (VNode msg)
 
 
 -- | Just put plain text in the DOM. It will escape the string so that it appears
 -- | exactly as you specify.
 -- |
 -- |    text "Hello World!"
-foreign import text :: forall msg. String -> Node msg
+foreign import text :: forall msg. String -> VNode msg
 
 -- | This function is useful when nesting components with [the Elm
 -- | Architecture](https://github.com/evancz/elm-architecture-tutorial/). It lets
@@ -93,14 +88,14 @@ foreign import text :: forall msg. String -> Node msg
 -- | So now all the events produced by `button` will be transformed to be of type
 -- | `Msg` so they can be handled by your update function!
 -- |
--- | map : (a -> msg) -> Node a -> Node msg
+-- | map : (a -> msg) -> VNode a -> Node msg
 -- | map =
 -- |   Native.VirtualDom.map
-map :: forall a msg. (a -> msg) -> Node a-> Node msg
+map :: forall a msg. (a -> msg) -> VNode a-> VNode msg
 map =
   runFn2 mapFn2
 
-foreign import mapFn2 :: forall a msg. Fn2 (a -> msg) (Node a) (Node msg)
+foreign import mapFn2 :: forall a msg. Fn2 (a -> msg) (VNode a) (VNode msg)
 
 -- PROPERTIES
 
@@ -266,31 +261,31 @@ newtype JsonDecoder msg =
 -- | can check to see if `model` is referentially equal to the previous value used,
 -- | and if so, we just stop. No need to build up the tree structure and diff it,
 -- | we know if the input to `view` is the same, the output must be the same!
-lazy :: forall a msg. (a -> Node msg) -> a -> Node msg
+lazy :: forall a msg. (a -> VNode msg) -> a -> VNode msg
 lazy =
   runFn2 lazyFn2
 
 foreign import lazyFn2
   :: forall a msg
-  .  Fn2 (a -> Node msg) a (Node msg)
+  .  Fn2 (a -> VNode msg) a (VNode msg)
 
 -- | Same as `lazy` but checks on two arguments.
-lazy2 :: forall a b msg. (a -> b -> Node msg) -> a -> b -> Node msg
+lazy2 :: forall a b msg. (a -> b -> VNode msg) -> a -> b -> VNode msg
 lazy2 =
   runFn3 lazy2Fn3
 
 foreign import lazy2Fn3
   :: forall a b msg
-  .  Fn3 (a -> b -> Node msg) a b (Node msg)
+  .  Fn3 (a -> b -> VNode msg) a b (VNode msg)
 
 -- | Same as `lazy` but checks on three arguments.
-lazy3 :: forall a b c msg. (a -> b -> c -> Node msg) -> a -> b -> c -> Node msg
+lazy3 :: forall a b c msg. (a -> b -> c -> VNode msg) -> a -> b -> c -> VNode msg
 lazy3 =
   runFn4 lazy3Fn4
 
 foreign import lazy3Fn4
   :: forall a b c msg
-  .  Fn4 (a -> b -> c -> Node msg) a b c (Node msg)
+  .  Fn4 (a -> b -> c -> VNode msg) a b c (VNode msg)
 
 
 -- | Works just like `node`, but you add a unique identifier to each child
@@ -301,37 +296,37 @@ keyedNode
   :: forall msg
   .  String
   -> Array (Property msg)
-  -> Array (Tuple String (Node msg))
-  -> Node msg
+  -> Array (Tuple String (VNode msg))
+  -> VNode msg
 keyedNode =
   runFn3 keyedNodeFn3
 
 foreign import keyedNodeFn3 ::
   forall msg.
-  Fn3 String (Array (Property msg)) (Array (Tuple String (Node msg))) (Node msg)
+  Fn3 String (Array (Property msg)) (Array (Tuple String (VNode msg))) (VNode msg)
 
 
 -- XXXXXXXX
 
 foreign import render
   :: forall msg
-  .  Node msg
+  .  VNode msg
   -> Element
 
 newtype Patch msg =
   Patch Foreign
 
-diff :: forall msg. Node msg -> Node msg -> Patch msg
+diff :: forall msg. VNode msg -> VNode msg -> Patch msg
 diff = runFn2 diffFn2
 
 foreign import diffFn2
   :: forall msg
-  .  Fn2 (Node msg) (Node msg) (Patch msg)
+  .  Fn2 (VNode msg) (VNode msg) (Patch msg)
 
 applyPatches
   :: forall msg eff
   .  Element
-  -> Node msg
+  -> VNode msg
   -> Patch msg
   -> Eff (dom::DOM | eff) Element
 applyPatches oldDom oldNode patch =
@@ -339,7 +334,7 @@ applyPatches oldDom oldNode patch =
 
 foreign import applyPatchesFn3
   :: forall msg
-  .  Fn3 Element (Node msg) (Patch msg) Element
+  .  Fn3 Element (VNode msg) (Patch msg) Element
 
 
 -- PROGRAMS
@@ -349,6 +344,7 @@ foreign import applyPatchesFn3
 -- | It works exactly the same way.
 -- |
 -- | [prog]: http://package.elm-lang.org/packages/elm-lang/html/latest/Html-App#program
+{--
 program
   :: forall model msg
   .  { init :: (Tuple model (Cmd msg))
@@ -378,6 +374,7 @@ data Never =
 
 newtype Program flag model msg = Program { program :: String }
 
+--}
 
 -- | Check out the docs for [`Html.App.programWithFlags`][prog].
 -- | It works exactly the same way.
