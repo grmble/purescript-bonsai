@@ -1,5 +1,5 @@
 {
-  "name": "elm-virtual-dom",
+  "name": "purescript-bonsai",
   "ignore": [
     "**/.*",
     "node_modules",

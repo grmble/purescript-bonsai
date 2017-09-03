@@ -1,4 +1,4 @@
-module Native.VirtualDom
+module Bonsai.VirtualDom
   ( VNode
   , Cmd
   , EventDecoder
@@ -200,7 +200,8 @@ type Cmd msg =
   Array msg
 
 -- | A EventDecoder turns DOM events into messages.
-type EventDecoder msg = Foreign -> Cmd msg
+type EventDecoder msg =
+  Foreign -> Cmd msg
 
 -- | Create a custom event listener.
 -- |
