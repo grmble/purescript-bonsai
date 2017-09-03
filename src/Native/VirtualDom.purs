@@ -1,8 +1,9 @@
 module Native.VirtualDom
   ( VNode
+  , Cmd
+  , EventDecoder
   , Property
   , Options
-  , JsonDecoder
   , Patch
   , node
   , text
@@ -18,7 +19,6 @@ module Native.VirtualDom
   , lazy2
   , lazy3
   , keyedNode
-  -- XXX
   , render
   , diff
   , applyPatches
@@ -28,6 +28,7 @@ where
 import Prelude
 
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Ref (REF)
 import Data.Function.Uncurried (Fn2, Fn3, Fn4, runFn2, runFn3, runFn4)
 import Data.Foreign (Foreign, toForeign)
 import Data.Tuple (Tuple)
@@ -194,6 +195,12 @@ foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 
 -- EVENTS
 
+-- | A Command represents messages that should be applied to the Bonsai model
+type Cmd msg =
+  Array msg
+
+-- | A EventDecoder turns DOM events into messages.
+type EventDecoder msg = Foreign -> Cmd msg
 
 -- | Create a custom event listener.
 -- |
@@ -207,15 +214,17 @@ foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 -- | `addEventListener`. Next you give a JSON decoder, which lets you pull
 -- | information out of the event object. If the decoder succeeds, it will produce
 -- | a message and route it to your `update` function.
-on :: forall msg. String -> (JsonDecoder msg) -> Property msg
-on eventName decoder =
-  runFn3 onFn3 eventName defaultOptions decoder
+on :: forall eff msg. String -> (EventDecoder msg) -> Property msg
+on eventName emitter =
+  runFn3 onFn3 eventName defaultOptions emitter
 
-foreign import onFn3 :: forall msg. Fn3 String Options (JsonDecoder msg) (Property msg)
+foreign import onFn3
+  :: forall eff msg
+  .  Fn3 String Options (EventDecoder msg) (Property msg)
 
 
 -- | Same as `on` but you can set a few options.
-onWithOptions :: forall msg. String -> Options -> JsonDecoder msg -> Property msg
+onWithOptions :: forall eff msg. String -> Options -> EventDecoder msg -> Property msg
 onWithOptions =
   runFn3 onFn3
 
@@ -242,13 +251,6 @@ defaultOptions =
   { stopPropagation: false
   , preventDefault: false
   }
-
-
-
--- XXX: Json Decoder ?
-newtype JsonDecoder msg =
-  JsonDecoder Foreign
-
 
 
 -- OPTIMIZATION
@@ -306,16 +308,30 @@ foreign import keyedNodeFn3 ::
   Fn3 String (Array (Property msg)) (Array (Tuple String (VNode msg))) (VNode msg)
 
 
--- XXXXXXXX
+-- | Emitters push Cmds into the bonsai event loop
+type Emitter eff msg = Cmd msg -> Eff (ref::REF,dom::DOM|eff) Unit
 
-foreign import render
-  :: forall msg
-  .  VNode msg
+-- | Render a virtual dom node to a DOM Element.
+-- |
+-- | Initial step - the whole point in a VDom is the diffing
+-- | and patching.  So after rendering once, diff and applyPatches
+-- | should be used.
+render
+  :: forall eff msg
+  .  Emitter eff msg
+  -> VNode msg
   -> Element
+render = runFn2 renderFn2
 
+foreign import renderFn2
+  :: forall eff msg
+  .  Fn2 (Emitter eff msg) (VNode msg) Element
+
+-- | A Patch for efficient updates.
 newtype Patch msg =
   Patch Foreign
 
+-- | Compute a patch between the old vnode representation and the new one.
 diff :: forall msg. VNode msg -> VNode msg -> Patch msg
 diff = runFn2 diffFn2
 
@@ -323,72 +339,20 @@ foreign import diffFn2
   :: forall msg
   .  Fn2 (VNode msg) (VNode msg) (Patch msg)
 
+-- | Apply a diff between VDoms to the DOM element.
+-- |
+-- | The DOM element should be the one from the last
+-- | diff/applyPatches pass, or the initially rendered one.
 applyPatches
-  :: forall msg eff
-  .  Element
+  :: forall eff msg
+  .  Emitter eff msg
+  -> Element
   -> VNode msg
   -> Patch msg
-  -> Eff (dom::DOM | eff) Element
-applyPatches oldDom oldNode patch =
-  pure $ runFn3 applyPatchesFn3 oldDom oldNode patch
+  -> Eff (dom::DOM,ref::REF|eff) Element
+applyPatches emitter dnode vnode patch =
+  pure $ runFn4 applyPatchesFn4 emitter dnode vnode patch
 
-foreign import applyPatchesFn3
-  :: forall msg
-  .  Fn3 Element (VNode msg) (Patch msg) Element
-
-
--- PROGRAMS
-
-
--- | Check out the docs for [`Html.App.program`][prog].
--- | It works exactly the same way.
--- |
--- | [prog]: http://package.elm-lang.org/packages/elm-lang/html/latest/Html-App#program
-{--
-program
-  :: forall model msg
-  .  { init :: (Tuple model (Cmd msg))
-     , update :: msg -> model -> (Tuple model (Cmd msg))
-     , subscriptions :: model -> Sub msg
-     , view :: model -> Node msg
-     }
-  -> Program Never model msg
-program =
-  programNoDebug <<< toForeign
-  -- runFn2 programFn2 Debug.wrap impl
-
-foreign import programNoDebug
-  :: forall model msg
-  .  Foreign -> (Program Never model msg)
-
--- XXX: stubs for elm builtins
-
-newtype Cmd msg =
-  Cmd (Array msg)
-
-newtype Sub msg =
-  Sub (Array msg)
-
-data Never =
-  Never
-
-newtype Program flag model msg = Program { program :: String }
-
---}
-
--- | Check out the docs for [`Html.App.programWithFlags`][prog].
--- | It works exactly the same way.
--- |
--- | [prog]: http://package.elm-lang.org/packages/elm-lang/html/latest/Html-App#programWithFlags
-{--
-programWithFlags
-  :: forall flags model msg
-  .  { init :: (Tuple model (Cmd msg))
-     , update :: msg -> model -> (Tuple model (Cmd msg))
-     , subscriptions :: model -> Sub msg
-     , view :: model -> Node msg
-     }
-  -> Program flags model msg
-programWithFlags impl =
-  runFn3 programWithFlagsFn2 Debug.wrapWithFlags impl
---}
+foreign import applyPatchesFn4
+  :: forall eff msg
+  .  Fn4 (Emitter eff msg) Element (VNode msg) (Patch msg) Element
