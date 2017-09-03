@@ -425,19 +425,18 @@ function makeEventHandler(eventNode, info)
 		// var value = A2(_elm_lang$core$Native_Json.run,info.decoder, event);
 		var value = info.decoder(event);
 
+		var options = info.options;
+		if (options.stopPropagation)
+		{
+			event.stopPropagation();
+		}
+		if (options.preventDefault)
+		{
+			event.preventDefault();
+		}
+
 		if (value.constructor.name === 'Right')
 		{
-			var options = info.options;
-			if (options.stopPropagation)
-			{
-				event.stopPropagation();
-			}
-			if (options.preventDefault)
-			{
-				event.preventDefault();
-			}
-
-			// var message = value.value0;
 			var message = value.value0;
 
 			var currentEventNode = eventNode;
