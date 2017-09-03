@@ -425,11 +425,7 @@ function makeEventHandler(eventNode, info)
 		// var value = A2(_elm_lang$core$Native_Json.run,info.decoder, event);
 		var value = info.decoder(event);
 
-		// XXX: elm json decoder decoded OK
-		// we are leaving the block as is for ease of merging
-		// also EventDecoder may decode Json at some point, there will be a Maybe then
-		// if (value.ctor === 'Ok' || true)
-		if(true)
+		if (value.constructor.name === 'Right')
 		{
 			var options = info.options;
 			if (options.stopPropagation)
@@ -442,7 +438,7 @@ function makeEventHandler(eventNode, info)
 			}
 
 			// var message = value.value0;
-			var message = value;
+			var message = value.value0;
 
 			var currentEventNode = eventNode;
 			var emitter = eventNode.emitter;
@@ -467,7 +463,15 @@ function makeEventHandler(eventNode, info)
 			}
 
 			// emit the message to bonsai
-			emitter(value)();
+			// console.log("emitting ", value);
+			emitter(message)();
+		}
+		else
+		{
+			if (typeof console !== 'undefined') {
+				console.log("decoding error: ", value.value0);
+				console.log("event was: ", event);
+			}
 		}
 	};
 
@@ -984,7 +988,7 @@ function diffKeyedChildren(aParent, bParent, patches, rootIndex)
 ////////////  CHANGES FROM KEYED DIFF  ////////////
 
 
-var POSTFIX = '_elmW6BL';
+const POSTFIX = '_elmW6BL';
 
 
 function insertNode(changes, localPatches, key, vnode, bIndex, inserts)
@@ -1465,7 +1469,7 @@ function makeIgnorer(overlayNode)
 	}
 }
 
-var mostEvents = [
+const mostEvents = [
 	'click', 'dblclick', 'mousemove',
 	'mouseup', 'mousedown', 'mouseenter', 'mouseleave',
 	'touchstart', 'touchend', 'touchcancel', 'touchmove',
@@ -1477,7 +1481,7 @@ var mostEvents = [
 	'focus', 'blur'
 ];
 
-var allEvents = mostEvents.concat('wheel', 'scroll');
+const allEvents = mostEvents.concat('wheel', 'scroll');
 
 
 

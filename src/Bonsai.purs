@@ -69,10 +69,10 @@ queueCommand
   -> Cmd msg
   -> Eff (ref::REF|eff) Unit
 queueCommand env cmd = do
-  modifyRef env.pending $ appendCmd cmd
+  modifyRef env.pending $ appendCmd
   pure unit
   where
-    appendCmd cmd pending = pending <> cmd
+    appendCmd pending = pending <> cmd
 
 
 -- | Cmd emitter for the VirtualDom

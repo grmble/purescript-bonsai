@@ -1,0 +1,6 @@
+event decoding helpers
+event equality.  Check  _elm_lang$core$Native_Json.equality
+update functions should return tuple (model, Cmd msg)
+x cmd functor - not a newtype && Array is a Functor
+x eventdecoder should return either
+x handle with event decoding helpers: mapProperty to pre-parse events (e.g. onInput) ???

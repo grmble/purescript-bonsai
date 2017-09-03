@@ -27,12 +27,12 @@ import Prelude
 
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Ref (REF)
+import Data.Either (Either)
 import Data.Function.Uncurried (Fn2, Fn3, Fn4, runFn2, runFn3, runFn4)
 import Data.Foreign (Foreign, toForeign)
 import Data.Tuple (Tuple)
 import DOM (DOM)
 import DOM.Node.Types (Element)
-
 
 -- | An immutable chunk of data representing a DOM node. This can be HTML or SVG.
 -- |
@@ -139,8 +139,9 @@ property :: forall a msg. String -> a -> Property msg
 property key value =
   runFn2 propertyFn2 key (toForeign value)
 
-foreign import propertyFn2 :: forall a msg. Fn2 String Foreign (Property msg)
-
+foreign import propertyFn2
+  :: forall msg
+  .  Fn2 String Foreign (Property msg)
 
 
 -- | Create arbitrary HTML *attributes*. Maps onto JavaScript’s `setAttribute`
@@ -187,7 +188,6 @@ foreign import attributeFn3 :: forall msg. Fn3 String String String (Property ms
 foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 
 
-
 -- EVENTS
 
 -- | A Command represents messages that should be applied to the Bonsai model
@@ -196,7 +196,7 @@ type Cmd msg =
 
 -- | A EventDecoder turns DOM events into messages.
 type EventDecoder msg =
-  Foreign -> Cmd msg
+  Foreign -> Either String (Cmd msg)
 
 -- | Create a custom event listener.
 -- |
@@ -210,17 +210,17 @@ type EventDecoder msg =
 -- | `addEventListener`. Next you give a JSON decoder, which lets you pull
 -- | information out of the event object. If the decoder succeeds, it will produce
 -- | a message and route it to your `update` function.
-on :: forall eff msg. String -> (EventDecoder msg) -> Property msg
+on :: forall msg. String -> (EventDecoder msg) -> Property msg
 on eventName emitter =
   runFn3 onFn3 eventName defaultOptions emitter
 
 foreign import onFn3
-  :: forall eff msg
+  :: forall msg
   .  Fn3 String Options (EventDecoder msg) (Property msg)
 
 
 -- | Same as `on` but you can set a few options.
-onWithOptions :: forall eff msg. String -> Options -> EventDecoder msg -> Property msg
+onWithOptions :: forall msg. String -> Options -> EventDecoder msg -> Property msg
 onWithOptions =
   runFn3 onFn3
 
