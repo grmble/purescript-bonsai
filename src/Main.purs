@@ -15,8 +15,8 @@ import Partial.Unsafe (unsafePartial)
 
 main :: forall e. Eff (console::CONSOLE,dom::DOM,ref::REF| e) Unit
 main = unsafePartial $ do
-  Just main  <- domElementById (ElementId "main")
-  _ <- program main update view 0
+  Just mainDiv  <- domElementById (ElementId "main")
+  _ <- program mainDiv update view 0
   log "..."
 
 

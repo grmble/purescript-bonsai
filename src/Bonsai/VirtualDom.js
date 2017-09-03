@@ -260,21 +260,6 @@ function equalEvents(a, b)
 }
 
 
-function mapProperty(func, property)
-{
-	if (property.key !== EVENT_KEY)
-	{
-		return property;
-	}
-	// XXX: fixme
-	return on(
-		property.realKey,
-		property.value.options,
-		A2(_elm_lang$core$Json_Decode$map, func, property.value.decoder)
-	);
-}
-
-
 ////////////  RENDER  ////////////
 
 
@@ -1527,7 +1512,6 @@ exports.propertyFn2 = property;
 exports.style = style;
 exports.attributeFn2 = attribute;
 exports.attributeFn3 = attributeNS;
-exports.mapPropertyFn2 = mapProperty;
 exports.style = style;
 exports.onFn3 = on;
 exports.lazyFn2 = lazy;
@@ -1538,7 +1522,3 @@ exports.keyedNodeFn3 = keyedNode;
 exports.renderFn2 = renderFn2;
 exports.diffFn2 = diff;
 exports.applyPatchesFn4 = applyPatchesFn4;
-
-exports.programFn2 = program;
-exports.programWithFlagsFn2 = programWithFlags;
-exports.programNoDebug = programNoDebug;

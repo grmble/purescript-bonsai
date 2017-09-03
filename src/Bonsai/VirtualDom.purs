@@ -7,11 +7,9 @@ module Bonsai.VirtualDom
   , Patch
   , node
   , text
-  , map
   , property
   , attribute
   , attributeNS
-  , mapProperty
   , style
   , on
   , onWithOptions
@@ -37,8 +35,13 @@ import DOM.Node.Types (Element)
 
 
 -- | An immutable chunk of data representing a DOM node. This can be HTML or SVG.
+-- |
+-- | It's a functor that maps the Cmds that are emitted by event handlers.
 newtype VNode msg =
   VNode Foreign
+
+instance functorVNode :: Functor VNode where
+  map = runFn2 mapFn2
 
 -- | Create a DOM node with a tag name, a list of HTML properties that can
 -- | include styles and event listeners, a list of CSS properties like `color`, and
@@ -92,8 +95,8 @@ foreign import text :: forall msg. String -> VNode msg
 -- | map : (a -> msg) -> VNode a -> Node msg
 -- | map =
 -- |   Native.VirtualDom.map
-map :: forall a msg. (a -> msg) -> VNode a-> VNode msg
-map =
+mapNode :: forall a msg. (a -> msg) -> VNode a-> VNode msg
+mapNode =
   runFn2 mapFn2
 
 foreign import mapFn2 :: forall a msg. Fn2 (a -> msg) (VNode a) (VNode msg)
@@ -119,7 +122,6 @@ foreign import mapFn2 :: forall a msg. Fn2 (a -> msg) (VNode a) (VNode msg)
 
 newtype Property msg =
   Property Foreign
-
 
 -- | Create arbitrary *properties*.
 -- |
@@ -168,13 +170,6 @@ attributeNS = runFn3 attributeFn3
 
 foreign import attributeFn3 :: forall msg. Fn3 String String String (Property msg)
 
-
--- | Transform the messages produced by a `Property`.
-mapProperty :: forall a msg. (a -> msg) -> Property a -> Property msg
-mapProperty =
-  runFn2 mapPropertyFn2
-
-foreign import mapPropertyFn2 :: forall a msg. Fn2 (a -> msg) (Property a) (Property msg)
 
 -- | Specify a list of styles.
 -- |
