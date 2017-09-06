@@ -25,7 +25,7 @@ import Control.Plus (empty)
 import DOM (DOM)
 import DOM.Node.Node (appendChild)
 import DOM.Node.Types (Element, elementToNode)
-import Data.Array (snoc)
+import Data.Array (null, snoc)
 import Data.Array.Partial (head, tail)
 import Partial.Unsafe (unsafePartial)
 
@@ -133,16 +133,23 @@ step
   -> Eff (dom::DOM,ref::REF|eff) Unit
 step env = do
   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
-  state <- liftEff $ readRef env.state
 
-  model2 <- updateModel state.model msgs
-  let vnode2 = env.renderer model2
-  let patch = diff state.vnode vnode2
+  if null msgs
+    then pure unit
+    else do
 
-  dnode2 <- liftEff $ applyPatches (emitter env) state.dnode state.vnode patch
+      state <- liftEff $ readRef env.state
 
-  writeRef env.state {model: model2, vnode: vnode2, dnode: dnode2}
-  pure unit
+      model2 <- updateModel state.model msgs
+      let vnode2 = env.renderer model2
+      let patch = diff state.vnode vnode2
+
+      dnode2 <- liftEff $ applyPatches (emitter env) state.dnode state.vnode patch
+
+      writeRef env.state {model: model2, vnode: vnode2, dnode: dnode2}
+
+      -- drain the pending queue!
+      step env
 
   where
     updateModel model [] = pure model
