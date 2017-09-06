@@ -1,5 +1,2 @@
-(A) update functions should return tuple (model, Cmd msg)
-(B) event decoding helpers
 (C) ajax/xhr requests. Tasks?
-(C) event equality.  Document need for top-level function?
 (C) Tasks / onfocus https://stackoverflow.com/questions/31901397/how-to-set-focus-on-an-element-in-elm

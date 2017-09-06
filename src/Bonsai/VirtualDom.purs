@@ -1,6 +1,6 @@
+-- | Purescript interface to Elm Virtual DOM
 module Bonsai.VirtualDom
   ( VNode
-  , Cmd
   , EventDecoder
   , Property
   , Options
@@ -25,6 +25,7 @@ where
 
 import Prelude
 
+import Bonsai.Types (Cmd)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Ref (REF)
 import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, runFn2, runFn3, runFn4, runFn5)
@@ -188,10 +189,6 @@ foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 
 
 -- EVENTS
-
--- | A Command represents messages that should be applied to the Bonsai model
-type Cmd msg =
-  Array msg
 
 -- | A EventDecoder turns DOM events into messages.
 type EventDecoder msg =

@@ -30,7 +30,8 @@ where
 
 import Prelude
 
-import Bonsai.VirtualDom (Cmd, Options, Property, on, onWithOptions)
+import Bonsai.Types (Cmd)
+import Bonsai.VirtualDom (Options, Property, on, onWithOptions)
 import Data.Array (range, catMaybes)
 import Data.Foreign (F, Foreign, readInt, readString, isNull, isUndefined)
 import Data.Foreign.Index ((!))

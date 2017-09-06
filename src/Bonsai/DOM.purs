@@ -1,3 +1,4 @@
+-- | Bonsai DOM Helpers
 module Bonsai.DOM
   (domElementById)
 where
