@@ -256,6 +256,7 @@ function equalEvents(a, b)
 
 	// return _elm_lang$core$Native_Json.equality(a.decoder, b.decoder);
 	// XXX: event equality?
+	// console.log("event equality", a.decoder, b.decoder, a.decoder === b.decoder);
 	return a.decoder === b.decoder;
 }
 
@@ -440,7 +441,9 @@ function makeEventHandler(eventNode, info)
 			var message = value.value0;
 
 			var currentEventNode = eventNode;
-			var emitter = eventNode.emitter;
+			var tn = topEventNode(eventNode);
+			var emitter = tn.emitter;
+			var cmdMap = tn.cmdMap;
 
 			while (currentEventNode)
 			{
@@ -449,20 +452,19 @@ function makeEventHandler(eventNode, info)
 
 				if (typeof tagger === 'function')
 				{
-					message = tagger(message);
+					message = cmdMap(tagger)(message);
 				}
-				else
+				else if (typeof tagger === 'object')
 				{
 					for (var i = tagger.length; i--; )
 					{
-						message = tagger[i](message);
+						message = cmdMap(tagger[i])(message);
 					}
 				}
 				currentEventNode = currentEventNode.parent;
 			}
 
 			// emit the message to bonsai
-			// console.log("emitting ", value);
 			emitter(message)();
 		}
 		else
@@ -1498,14 +1500,28 @@ function F2(x) {
 	return x;
 }
 
-function renderFn2 (emitter, vNode) {
-	var eventNode = { tagger: identity, parent: undefined, emitter: emitter};
-	return render(vNode, eventNode);
+// make an event node for render/applyPatches
+// emitter is the function to emit events - will feed the bonsai event loop.
+// cmdMap is purescript's map function - Cmds are functors
+// so they can be mapped using purescripts implementation
+// instead of coding it in javascript
+function mkEventNode(cmdMap, emitter) {
+	return { parent: undefined, emitter: emitter, cmdMap: cmdMap};
 }
 
-function applyPatchesFn4 (emitter, domNode, oldVirtualNode, patches) {
-	var eventNode = { tagger: identity, parent: undefined, emitter: emitter };
-	return applyPatches(domNode, oldVirtualNode, patches, eventNode);
+function topEventNode(eventNode) {
+	while(eventNode.parent) {
+		eventNode = eventNode.parent;
+	}
+	return eventNode;
+}
+
+function renderFn3 (cmdMap, emitter, vNode) {
+	return render(vNode, mkEventNode(cmdMap, emitter));
+}
+
+function applyPatchesFn5 (cmdMap, emitter, domNode, oldVirtualNode, patches) {
+	return applyPatches(domNode, oldVirtualNode, patches, mkEventNode(cmdMap, emitter));
 }
 
 exports.nodeFn3 = nodeHelp;
@@ -1522,6 +1538,6 @@ exports.lazy2Fn3 = lazy2;
 exports.lazy3Fn4 = lazy3;
 exports.keyedNodeFn3 = keyedNode;
 
-exports.renderFn2 = renderFn2;
+exports.renderFn3 = renderFn3;
 exports.diffFn2 = diff;
-exports.applyPatchesFn4 = applyPatchesFn4;
+exports.applyPatchesFn5 = applyPatchesFn5;

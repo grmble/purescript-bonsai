@@ -27,9 +27,8 @@ import Prelude
 
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Ref (REF)
-import Data.Either (Either)
-import Data.Function.Uncurried (Fn2, Fn3, Fn4, runFn2, runFn3, runFn4)
-import Data.Foreign (Foreign, toForeign)
+import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, runFn2, runFn3, runFn4, runFn5)
+import Data.Foreign (Foreign, F, toForeign)
 import Data.Tuple (Tuple)
 import DOM (DOM)
 import DOM.Node.Types (Element)
@@ -196,7 +195,7 @@ type Cmd msg =
 
 -- | A EventDecoder turns DOM events into messages.
 type EventDecoder msg =
-  Foreign -> Either String (Cmd msg)
+  Foreign -> F (Cmd msg)
 
 -- | Create a custom event listener.
 -- |
@@ -211,8 +210,8 @@ type EventDecoder msg =
 -- | information out of the event object. If the decoder succeeds, it will produce
 -- | a message and route it to your `update` function.
 on :: forall msg. String -> (EventDecoder msg) -> Property msg
-on eventName emitter =
-  runFn3 onFn3 eventName defaultOptions emitter
+on eventName decoder =
+  runFn3 onFn3 eventName defaultOptions decoder
 
 foreign import onFn3
   :: forall msg
@@ -317,11 +316,16 @@ render
   .  Emitter eff msg
   -> VNode msg
   -> Element
-render = runFn2 renderFn2
+render = runFn3 renderFn3 cmdMap
 
-foreign import renderFn2
-  :: forall eff msg
-  .  Fn2 (Emitter eff msg) (VNode msg) Element
+foreign import renderFn3
+  :: forall eff a msg
+  .  Fn3 (CmdMap a msg) (Emitter eff msg) (VNode msg) Element
+
+-- internal concrete alias so we can get it into javascript
+type CmdMap a b = (a -> b) -> Cmd a -> Cmd b
+cmdMap :: forall a b. CmdMap a b
+cmdMap = map
 
 -- | A Patch for efficient updates.
 newtype Patch msg =
@@ -347,8 +351,8 @@ applyPatches
   -> Patch msg
   -> Eff (dom::DOM,ref::REF|eff) Element
 applyPatches emitter dnode vnode patch =
-  pure $ runFn4 applyPatchesFn4 emitter dnode vnode patch
+  pure $ runFn5 applyPatchesFn5 cmdMap emitter dnode vnode patch
 
-foreign import applyPatchesFn4
-  :: forall eff msg
-  .  Fn4 (Emitter eff msg) Element (VNode msg) (Patch msg) Element
+foreign import applyPatchesFn5
+  :: forall eff a msg
+  .  Fn5 (CmdMap a msg) (Emitter eff msg) Element (VNode msg) (Patch msg) Element

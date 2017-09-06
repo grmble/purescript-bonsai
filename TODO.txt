@@ -1,7 +1,5 @@
-event decoding helpers
-event equality.  Check  _elm_lang$core$Native_Json.equality
-update functions should return tuple (model, Cmd msg)
-x eventdecoder fehler: event optionen werden nicht verwendet
-x cmd functor - not a newtype && Array is a Functor
-x eventdecoder should return either
-x handle with event decoding helpers: mapProperty to pre-parse events (e.g. onInput) ???
+(A) update functions should return tuple (model, Cmd msg)
+(B) event decoding helpers
+(C) ajax/xhr requests. Tasks?
+(C) event equality.  Document need for top-level function?
+(C) Tasks / onfocus https://stackoverflow.com/questions/31901397/how-to-set-focus-on-an-element-in-elm
