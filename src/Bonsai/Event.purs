@@ -19,6 +19,7 @@
 module Bonsai.Event
   ( onInput
   , onClick
+  , onClickWithOptions
   , onSubmit
   , eventDecoder
   , preventDefaultStopPropagation
@@ -57,6 +58,10 @@ onInput fn =
 onClick :: forall msg. (StrMap String -> Cmd msg) -> Property msg
 onClick fn =
   on "click" (eventDecoder fn targetFormValues)
+
+onClickWithOptions :: forall msg. Options -> (StrMap String -> Cmd msg) -> Property msg
+onClickWithOptions options fn =
+  onWithOptions "click" options (eventDecoder fn targetFormValues)
 
 -- | Event listener propeprty for the submit event.
 -- |
