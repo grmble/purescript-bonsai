@@ -1,3 +1,4 @@
 (B) Updates via requestAnimationFrame
+(B) Debug output system (log emitted messages?)
 (C) ajax/xhr requests. Tasks?
 (C) Tasks / onfocus https://stackoverflow.com/questions/31901397/how-to-set-focus-on-an-element-in-elm

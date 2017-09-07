@@ -18,23 +18,28 @@
 
 module Bonsai.Event
   ( onInput
+  , onInputWithOptions
   , onClick
   , onClickWithOptions
+  , onEnter
   , onSubmit
   , eventDecoder
   , preventDefaultStopPropagation
   , targetValue
   , targetFormValues
   , targetValues
+  , ignoreEscape
   )
 where
 
 import Prelude
 
+
 import Bonsai.Types (Cmd)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions)
+import Control.Plus (empty)
 import Data.Array (range, catMaybes)
-import Data.Foreign (F, Foreign, readInt, readString, isNull, isUndefined)
+import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
 import Data.Foreign.Index ((!))
 import Data.Maybe (Maybe(..))
 import Data.StrMap (StrMap, fromFoldable)
@@ -51,19 +56,20 @@ onInput :: forall msg. (String -> Cmd msg) -> Property msg
 onInput fn =
   on "input" (eventDecoder fn targetValue)
 
+onInputWithOptions :: forall msg. Options -> (String -> Cmd msg) -> Property msg
+onInputWithOptions options fn =
+  onWithOptions "input" options (eventDecoder fn targetValue)
+
 -- | Event listener property for the click event.
--- |
--- | Should be defined on a button. Will call the message
--- | constructor with a map of the current form values.
-onClick :: forall msg. (StrMap String -> Cmd msg) -> Property msg
-onClick fn =
-  on "click" (eventDecoder fn targetFormValues)
+onClick :: forall msg. Cmd msg -> Property msg
+onClick cmd =
+  on "click" (const $ pure cmd)
 
-onClickWithOptions :: forall msg. Options -> (StrMap String -> Cmd msg) -> Property msg
-onClickWithOptions options fn =
-  onWithOptions "click" options (eventDecoder fn targetFormValues)
+onClickWithOptions :: forall msg. Options -> Cmd msg -> Property msg
+onClickWithOptions options cmd =
+  onWithOptions "click" options (const $ pure cmd)
 
--- | Event listener propeprty for the submit event.
+-- | Event listener property for the submit event.
 -- |
 -- | Should be defined on the form. Will prevent default
 -- | and stop propagation and will call the constructor
@@ -71,6 +77,17 @@ onClickWithOptions options fn =
 onSubmit :: forall msg. (StrMap String -> Cmd msg) -> Property msg
 onSubmit fn =
   onWithOptions "submit" preventDefaultStopPropagation (eventDecoder fn targetValues)
+
+-- | Emit commands on enter key presses
+onEnter :: forall msg. Cmd msg -> Property msg
+onEnter enter =
+  on "keydown" $ \event -> do
+    keyCode <- event ! "keyCode" >>= readInt
+    case keyCode of
+      13 -> -- Enter
+        pure enter
+      _ ->
+        pure empty
 
 preventDefaultStopPropagation :: Options
 preventDefaultStopPropagation =
@@ -86,8 +103,8 @@ eventDecoder
   -> (Foreign -> F a)
   -> Foreign
   -> F (Cmd msg)
-eventDecoder mapFn decoder event =
-  mapFn <$> decoder event
+eventDecoder mapFn decoder =
+  map mapFn <<< decoder
 
 -- | Read the value of the target input element
 targetValue :: Foreign -> F String
@@ -124,3 +141,13 @@ nameAndValue arr idx = do
 isNullOrUndefined :: Foreign -> Boolean
 isNullOrUndefined value =
   (isNull value) || (isUndefined value)
+
+-- | Event decoder returns unit or fails
+-- |
+-- | hack or no hack?
+ignoreEscape :: Foreign -> F Unit
+ignoreEscape event = do
+  keyCode <- event ! "keyCode" >>= readInt
+  if keyCode == 27 -- ESC
+    then pure unit
+    else fail (ForeignError "there is no escape")

@@ -426,18 +426,23 @@ function makeEventHandler(eventNode, info)
 		// var value = A2(_elm_lang$core$Native_Json.run,info.decoder, event);
 		var value = info.decoder(event);
 
-		var options = info.options;
-		if (options.stopPropagation)
-		{
-			event.stopPropagation();
-		}
-		if (options.preventDefault)
-		{
-			event.preventDefault();
-		}
-
 		if (value.constructor.name === 'Right')
 		{
+			// event options stop propagation/preventdefault are only
+			// applied after successful EventDecoder.
+			// this is a feature: non standard options will
+			// only apply to successful event decodes (= that emit
+			// a command).  Failures will bubble on.
+			var options = info.options;
+			if (options.stopPropagation)
+			{
+				event.stopPropagation();
+			}
+			if (options.preventDefault)
+			{
+				event.preventDefault();
+			}
+
 			var message = value.value0;
 
 			var currentEventNode = eventNode;
