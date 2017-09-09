@@ -23,7 +23,6 @@ module Bonsai.Event
   , onClickWithOptions
   , onEnter
   , onSubmit
-  , eventDecoder
   , preventDefaultStopPropagation
   , targetValue
   , targetFormValues
@@ -35,8 +34,7 @@ where
 import Prelude
 
 
-import Bonsai.Types (Cmd)
-import Bonsai.VirtualDom (Options, Property, on, onWithOptions)
+import Bonsai.VirtualDom (Options, Property, EventDecoder, on, onWithOptions)
 import Control.Plus (empty)
 import Data.Array (range, catMaybes)
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
@@ -52,42 +50,42 @@ import Data.Tuple (Tuple(..))
 -- | Should be defined on an input. Will call
 -- | the message constructor with the current value
 -- | of the input element.
-onInput :: forall msg. (String -> Cmd msg) -> Property msg
-onInput fn =
-  on "input" (eventDecoder fn targetValue)
+onInput :: Property String
+onInput =
+  on "input" targetValue
 
-onInputWithOptions :: forall msg. Options -> (String -> Cmd msg) -> Property msg
-onInputWithOptions options fn =
-  onWithOptions "input" options (eventDecoder fn targetValue)
+onInputWithOptions :: Options -> Property String
+onInputWithOptions options =
+  onWithOptions "input" options targetValue
 
 -- | Event listener property for the click event.
-onClick :: forall msg. Cmd msg -> Property msg
-onClick cmd =
-  on "click" (const $ pure cmd)
+onClick :: forall msg. msg -> Property msg
+onClick msg =
+  on "click" (const $ pure $ pure msg)
 
-onClickWithOptions :: forall msg. Options -> Cmd msg -> Property msg
-onClickWithOptions options cmd =
-  onWithOptions "click" options (const $ pure cmd)
+onClickWithOptions :: forall msg. Options -> msg -> Property msg
+onClickWithOptions options msg =
+  onWithOptions "click" options (const $ pure $ pure msg)
 
 -- | Event listener property for the submit event.
 -- |
 -- | Should be defined on the form. Will prevent default
 -- | and stop propagation and will call the constructor
 -- | with a map of the current form values.
-onSubmit :: forall msg. (StrMap String -> Cmd msg) -> Property msg
-onSubmit fn =
-  onWithOptions "submit" preventDefaultStopPropagation (eventDecoder fn targetValues)
+onSubmit :: Property (StrMap String)
+onSubmit =
+  onWithOptions "submit" preventDefaultStopPropagation targetValues
 
 -- | Emit commands on enter key presses
-onEnter :: forall msg. Cmd msg -> Property msg
+onEnter :: forall msg. msg -> Property msg
 onEnter enter =
   on "keydown" $ \event -> do
     keyCode <- event ! "keyCode" >>= readInt
     case keyCode of
       13 -> -- Enter
-        pure enter
+        pure $ pure enter
       _ ->
-        pure empty
+        pure $ empty
 
 preventDefaultStopPropagation :: Options
 preventDefaultStopPropagation =
@@ -95,37 +93,26 @@ preventDefaultStopPropagation =
   , stopPropagation: true
   }
 
-
--- | Helper to make an EventDecoder from a constructor and a foreign decoder.
-eventDecoder
-  :: forall a msg
-  .  (a -> Cmd msg)
-  -> (Foreign -> F a)
-  -> Foreign
-  -> F (Cmd msg)
-eventDecoder mapFn decoder =
-  map mapFn <<< decoder
-
 -- | Read the value of the target input element
-targetValue :: Foreign -> F String
+targetValue :: EventDecoder String
 targetValue value =
-  value ! "target" ! "value" >>= readString
+  pure <$> (value ! "target" ! "value" >>= readString)
 
 -- ! Read the names and values of the target element's form.
-targetFormValues :: Foreign -> F (StrMap String)
+targetFormValues :: EventDecoder (StrMap String)
 targetFormValues value =
   value ! "target" ! "form" >>= namesAndValues
 
 -- | Read the names and values of target form, for form events.
-targetValues :: Foreign -> F (StrMap String)
-targetValues value = do
+targetValues :: EventDecoder (StrMap String)
+targetValues value =
   value ! "target" >>= namesAndValues
 
 -- | Read a strmap of values from a (fake) array of input elements
-namesAndValues :: Foreign -> F (StrMap String)
+namesAndValues :: EventDecoder (StrMap String)
 namesAndValues arr = do
   len <- arr ! "length" >>= readInt
-  (fromFoldable <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
+  (pure <<< fromFoldable <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
 
 nameAndValue :: Foreign -> Int -> F (Maybe (Tuple String String))
 nameAndValue arr idx = do
@@ -145,9 +132,9 @@ isNullOrUndefined value =
 -- | Event decoder returns unit or fails
 -- |
 -- | hack or no hack?
-ignoreEscape :: Foreign -> F Unit
+ignoreEscape :: EventDecoder Unit
 ignoreEscape event = do
   keyCode <- event ! "keyCode" >>= readInt
   if keyCode == 27 -- ESC
-    then pure unit
+    then pure $ pure unit
     else fail (ForeignError "there is no escape")

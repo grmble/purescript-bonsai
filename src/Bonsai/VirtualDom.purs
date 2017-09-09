@@ -194,6 +194,20 @@ foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 type EventDecoder msg =
   Foreign -> F (Cmd msg)
 
+-- internal concrete alias so we can get it into javascript
+type EventDecoderMap a b = (a -> b) -> EventDecoder a -> EventDecoder b
+eventDecoderMap :: forall a b. EventDecoderMap a b
+eventDecoderMap fn decoder =
+  map (map (map fn)) decoder
+
+
+instance propertyFunctor :: Functor Property where
+  map f a = runFn3 mapPropertyFn3 eventDecoderMap f a
+
+foreign import mapPropertyFn3
+  :: forall a b
+  .  Fn3 (EventDecoderMap a b) (a -> b) (Property a) (Property b)
+
 -- | Create a custom event listener.
 -- |
 -- |     import Json.Decode as Json
@@ -219,6 +233,7 @@ foreign import onFn3
 onWithOptions :: forall msg. String -> Options -> EventDecoder msg -> Property msg
 onWithOptions =
   runFn3 onFn3
+
 
 
 -- | Options for an event listener. If `stopPropagation` is true, it means the
