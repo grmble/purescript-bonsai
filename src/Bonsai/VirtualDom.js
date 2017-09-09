@@ -338,7 +338,7 @@ function render(vNode, eventNode)
 
 			for (var i = 0; i < children.length; i++)
 			{
-				domNode.appendChild(render(children[i]._1, eventNode));
+				domNode.appendChild(render(children[i].value1, eventNode));
 			}
 
 			return domNode;
@@ -867,10 +867,10 @@ function diffKeyedChildren(aParent, bParent, patches, rootIndex)
 		var a = aChildren[aIndex];
 		var b = bChildren[bIndex];
 
-		var aKey = a._0;
-		var bKey = b._0;
-		var aNode = a._1;
-		var bNode = b._1;
+		var aKey = a.value0;
+		var bKey = b.value0;
+		var aNode = a.value1;
+		var bNode = b.value1;
 
 		// check if keys match
 
@@ -893,16 +893,16 @@ function diffKeyedChildren(aParent, bParent, patches, rootIndex)
 		if (aLookAhead)
 		{
 			var aNext = aChildren[aIndex + 1];
-			var aNextKey = aNext._0;
-			var aNextNode = aNext._1;
+			var aNextKey = aNext.value0;
+			var aNextNode = aNext.value1;
 			var oldMatch = bKey === aNextKey;
 		}
 
 		if (bLookAhead)
 		{
 			var bNext = bChildren[bIndex + 1];
-			var bNextKey = bNext._0;
-			var bNextNode = bNext._1;
+			var bNextKey = bNext.value0;
+			var bNextNode = bNext.value1;
 			var newMatch = aKey === bNextKey;
 		}
 
@@ -979,8 +979,8 @@ function diffKeyedChildren(aParent, bParent, patches, rootIndex)
 	{
 		index++;
 		var a = aChildren[aIndex];
-		var aNode = a._1;
-		removeNode(changes, localPatches, a._0, aNode, index);
+		var aNode = a.value1;
+		removeNode(changes, localPatches, a.value0, aNode, index);
 		index += aNode.descendantsCount || 0;
 		aIndex++;
 	}
@@ -990,7 +990,7 @@ function diffKeyedChildren(aParent, bParent, patches, rootIndex)
 	{
 		endInserts = endInserts || [];
 		var b = bChildren[bIndex];
-		insertNode(changes, localPatches, b._0, b._1, undefined, endInserts);
+		insertNode(changes, localPatches, b.value0, b.value1, undefined, endInserts);
 		bIndex++;
 	}
 
@@ -1203,7 +1203,7 @@ function addDomNodesHelp(domNode, vNode, patches, i, low, high, eventNode)
 			for (var j = 0; j < vChildren.length; j++)
 			{
 				low++;
-				var vChild = vChildren[j]._1;
+				var vChild = vChildren[j].value1;
 				var nextLow = low + (vChild.descendantsCount || 0);
 				if (low <= index && index <= nextLow)
 				{
@@ -1412,7 +1412,7 @@ function wrapViewIn(appEventNode, overlayNode, viewIn)
 	return function(model)
 	{
 		var tuple = viewIn(model);
-		var newBlocking = tuple._0.ctor;
+		var newBlocking = tuple.value0.ctor;
 		appEventNode.tagger = newBlocking === 'Normal' ? normalTagger : blockTagger;
 		if (blocking !== newBlocking)
 		{
@@ -1432,7 +1432,7 @@ function wrapViewIn(appEventNode, overlayNode, viewIn)
 
 			blocking = newBlocking;
 		}
-		return tuple._1;
+		return tuple.value1;
 	}
 }
 
