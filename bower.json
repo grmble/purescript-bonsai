@@ -1,5 +1,14 @@
 {
   "name": "purescript-bonsai",
+  "homepage": "https://github.com/grmble/purescript-bonsai",
+  "description": "Mini-Elm in purescript",
+  "license": "BSD3",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/grmble/purescript-bonsai.git"
+  },
+
+
   "ignore": [
     "**/.*",
     "node_modules",
@@ -9,7 +18,6 @@
   "dependencies": {
     "purescript-prelude": "^3.1.0",
     "purescript-console": "^3.0.0",
-    "purescript-debug": "^3.0.0",
     "purescript-functions": "^3.0.0",
     "purescript-foreign": "^4.0.1",
     "purescript-foreign-generic": "^5.0.0",
