@@ -27,12 +27,13 @@ import Prelude
 
 import Bonsai.Types (Cmd)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Ref (REF)
-import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, runFn2, runFn3, runFn4, runFn5)
-import Data.Foreign (Foreign, F, toForeign)
-import Data.Tuple (Tuple)
 import DOM (DOM)
 import DOM.Node.Types (Element)
+import Data.Foreign (Foreign, F, toForeign)
+import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, runFn2, runFn3, runFn4, runFn5)
+import Data.Tuple (Tuple)
 
 -- | An immutable chunk of data representing a DOM node. This can be HTML or SVG.
 -- |
@@ -316,7 +317,12 @@ foreign import keyedNodeFn3 ::
 
 
 -- | Emitters push Cmds into the bonsai event loop
-type Emitter eff msg = Cmd msg -> Eff (ref::REF,dom::DOM|eff) Unit
+-- |
+-- | This is ultimately called from the javascript VirtualDom code
+-- | where we don't really know if its a Right or Left (hard to determine
+-- | in browser independent javascript), but purescript knows.
+-- | So the purescript code returns true for success, false for error.
+type Emitter eff msg = F (Cmd msg) -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
 
 -- | Render a virtual dom node to a DOM Element.
 -- |
@@ -335,9 +341,9 @@ foreign import renderFn3
   .  Fn3 (CmdMap a msg) (Emitter eff msg) (VNode msg) Element
 
 -- internal concrete alias so we can get it into javascript
-type CmdMap a b = (a -> b) -> Cmd a -> Cmd b
+type CmdMap a b = (a -> b) -> F (Cmd a) -> F (Cmd b)
 cmdMap :: forall a b. CmdMap a b
-cmdMap = map
+cmdMap = map <<< map
 
 -- | A Patch for efficient updates.
 newtype Patch msg =
@@ -361,7 +367,7 @@ applyPatches
   -> Element
   -> VNode msg
   -> Patch msg
-  -> Eff (dom::DOM,ref::REF|eff) Element
+  -> Eff (dom::DOM|eff) Element
 applyPatches emitter dnode vnode patch =
   pure $ runFn5 applyPatchesFn5 cmdMap emitter dnode vnode patch
 

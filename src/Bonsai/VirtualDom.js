@@ -441,7 +441,9 @@ function makeEventHandler(eventNode, info)
 		// var value = A2(_elm_lang$core$Native_Json.run,info.decoder, event);
 		var value = info.decoder(event);
 
-		if (value.constructor.name === 'Right')
+		// keep the indentation the same as in the Elm version
+		// in case of bugfixes upstream
+		if (true)
 		{
 			// event options stop propagation/preventdefault are only
 			// applied after successful EventDecoder.
@@ -458,7 +460,8 @@ function makeEventHandler(eventNode, info)
 				event.preventDefault();
 			}
 
-			var message = value.value0;
+			// error/success is all handled in the purescript mapping functions
+			var message = value;
 
 			var currentEventNode = eventNode;
 			var tn = topEventNode(eventNode);
@@ -485,13 +488,9 @@ function makeEventHandler(eventNode, info)
 			}
 
 			// emit the message to bonsai
-			emitter(message)();
-		}
-		else
-		{
-			if (typeof console !== 'undefined') {
-				console.log("decoding error: ", value.value0);
-				console.log("event was: ", event);
+			var wasSuccess = emitter(message)();
+			if (! wasSuccess) {
+				console.log("original event was: ", JSON.stringify(event), event);
 			}
 		}
 	};
