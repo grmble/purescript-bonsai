@@ -1,12 +1,15 @@
 -- | Bonsai Types
 module Bonsai.Types
   ( Cmd (..)
+  , BrowserEvent
   )
 where
 
 import Prelude
 
 import Control.Plus (class Alt, class Plus)
+import Data.Foreign (F)
+
 
 -- | A Command represents messages that should be applied to the Bonsai model
 -- |
@@ -22,20 +25,35 @@ instance cmdFunctor :: Functor Cmd where
     Cmd $ f msg
 
 instance cmdApply :: Apply Cmd where
-  apply NoCmd _ = NoCmd
-  apply _ NoCmd = NoCmd
-  apply (Cmd f) (Cmd msg) = Cmd $ f msg
+  apply NoCmd _ =
+    NoCmd
+  apply _ NoCmd =
+    NoCmd
+  apply (Cmd f) (Cmd msg) =
+    Cmd $ f msg
 
 instance cmdApplicative :: Applicative Cmd where
-  pure msg = Cmd msg
+  pure msg =
+    Cmd msg
 
 instance cmdBind :: Bind Cmd where
-  bind NoCmd _ = NoCmd
-  bind (Cmd msg) f = f msg
+  bind NoCmd _ =
+    NoCmd
+  bind (Cmd msg) f =
+    f msg
 
 instance cmdAlt :: Alt Cmd where
-  alt NoCmd x = x
-  alt x _ = x
+  alt NoCmd x =
+    x
+  alt x _ =
+    x
 
 instance cmdPlus :: Plus Cmd where
-  empty = NoCmd
+  empty =
+    NoCmd
+
+
+-- | A BrowserEvent is simply a decoded foreign
+-- |
+-- | This is inherently composable - it's a full monad.
+type BrowserEvent msg = F msg

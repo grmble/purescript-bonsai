@@ -12,6 +12,6 @@ where
 import Bonsai.Core (Program, UpdateResult, ProgramState, debugProgram, program, plainResult, mapResult)
 import Bonsai.DOM (domElementById)
 import Bonsai.Types (Cmd(..))
-import Bonsai.VirtualDom (VNode, EventDecoder, Property, Options, Patch
-  , node, text, property, attribute, attributeNS, style, on, onWithOptions
-  , keyedNode, render, diff, applyPatches)
+import Bonsai.VirtualDom (VNode, Property, Options, Patch
+  , node, text, property, attribute, attributeNS, style
+  , keyedNode)

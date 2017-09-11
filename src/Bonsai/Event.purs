@@ -5,36 +5,42 @@
 -- |  For this, you have call on with a top level function
 -- |  event decoder.
 -- |
--- |  So for top VDOM diff/patching performance, instead of
--- |  using onInput, you would make a top level function
+-- |  This module defines composable BrowserEvents and
+-- |  utility functions that use them.  For maximum performance,
+-- |  you should define your own toplevel helpers
+-- |  with a composed BrowserEvent of your choice.
 -- |
--- |    decodeXxx event = eventDecoder Xxx targetValue
 -- |
--- |    -- use it like
--- |    on "input" decodeXxx
+-- |  Example:
 -- |
--- |  Or you might just have a single event handler on a
--- |  parent element and look at the event target.
-
+-- |    -- convenient but not optimal for handlers that get used a lot
+-- |    onInput MyMsg
+-- |    -- good because will compare equal
+-- |    myMsgDecoder = decoder (MyMsg <$> targetValue)
+-- |    onInputMyMsg = on "input" myMsgDecoder
+-- |
 module Bonsai.Event
-  ( onInput
-  , onInputWithOptions
+  ( module Bonsai.VirtualDom
+  , onInput
   , onClick
-  , onClickWithOptions
   , onEnter
   , onSubmit
   , preventDefaultStopPropagation
-  , targetValue
-  , targetFormValues
-  , targetValues
-  , ignoreEscape
+  , emptyDecoder
+  , constantDecoder
+  , decoder
+  , targetValueEvent
+  , targetFormValuesEvent
+  , targetValuesEvent
+  , ignoreEscapeEvent
   )
 where
 
 import Prelude
 
 
-import Bonsai.VirtualDom (Options, Property, EventDecoder, on, onWithOptions)
+import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
+import Bonsai.Types (Cmd, BrowserEvent)
 import Control.Plus (empty)
 import Data.Array (range, catMaybes)
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
@@ -45,27 +51,15 @@ import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 
 
--- | Event listener property for the input event.
--- |
--- | Should be defined on an input. Will call
--- | the message constructor with the current value
--- | of the input element.
-onInput :: Property String
-onInput =
-  on "input" targetValue
-
-onInputWithOptions :: Options -> Property String
-onInputWithOptions options =
-  onWithOptions "input" options targetValue
+-- | Suboptimal helper for the input event.
+onInput :: forall msg. (String -> msg) -> Property msg
+onInput f =
+  on "input" (decoder (map f <<< targetValueEvent))
 
 -- | Event listener property for the click event.
 onClick :: forall msg. msg -> Property msg
 onClick msg =
-  on "click" (const $ pure $ pure msg)
-
-onClickWithOptions :: forall msg. Options -> msg -> Property msg
-onClickWithOptions options msg =
-  onWithOptions "click" options (const $ pure $ pure msg)
+  on "click" (constantDecoder msg)
 
 -- | Event listener property for the submit event.
 -- |
@@ -74,7 +68,7 @@ onClickWithOptions options msg =
 -- | with a map of the current form values.
 onSubmit :: Property (StrMap String)
 onSubmit =
-  onWithOptions "submit" preventDefaultStopPropagation targetValues
+  onWithOptions "submit" preventDefaultStopPropagation (decoder targetValuesEvent)
 
 -- | Emit commands on enter key presses
 onEnter :: forall msg. msg -> Property msg
@@ -93,26 +87,46 @@ preventDefaultStopPropagation =
   , stopPropagation: true
   }
 
+-- | A empty decoder - will only ever emit noop commands
+emptyDecoder :: forall msg. Foreign -> F (Cmd msg)
+emptyDecoder _ = pure $ empty
+
+-- | A constant decoder - will always produce a constant command
+constantDecoder :: forall msg. msg -> Foreign -> F (Cmd msg)
+constantDecoder msg _ = pure $ pure msg
+
+-- | Turn a BrowserEvent function into a decoder.
+decoder :: forall msg. (Foreign -> BrowserEvent msg) -> Foreign -> F (Cmd msg)
+decoder eventFn event =
+  pure <$> (eventFn event)
+
+-- | The simplest possible browser event - the foreign event itself
+identityEvent :: Foreign -> BrowserEvent Foreign
+identityEvent =
+  pure
+
 -- | Read the value of the target input element
-targetValue :: EventDecoder String
-targetValue value =
-  pure <$> (value ! "target" ! "value" >>= readString)
+targetValueEvent :: Foreign -> BrowserEvent String
+targetValueEvent event =
+  event ! "target" ! "value" >>= readString
 
 -- ! Read the names and values of the target element's form.
-targetFormValues :: EventDecoder (StrMap String)
-targetFormValues value =
-  value ! "target" ! "form" >>= namesAndValues
+targetFormValuesEvent :: Foreign -> BrowserEvent (StrMap String)
+targetFormValuesEvent event =
+  event ! "target" ! "form" >>= namesAndValues
 
 -- | Read the names and values of target form, for form events.
-targetValues :: EventDecoder (StrMap String)
-targetValues value =
-  value ! "target" >>= namesAndValues
+targetValuesEvent :: Foreign -> BrowserEvent (StrMap String)
+targetValuesEvent event =
+  event ! "target" >>= namesAndValues
 
--- | Read a strmap of values from a (fake) array of input elements
-namesAndValues :: EventDecoder (StrMap String)
+-- | Read names and values from a (fake) foreign array.
+-- |
+-- | This is meant to be used on an array of dom nodes.
+namesAndValues :: Foreign -> BrowserEvent (StrMap String)
 namesAndValues arr = do
   len <- arr ! "length" >>= readInt
-  (pure <<< fromFoldable <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
+  (fromFoldable <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
 
 nameAndValue :: Foreign -> Int -> F (Maybe (Tuple String String))
 nameAndValue arr idx = do
@@ -132,9 +146,9 @@ isNullOrUndefined value =
 -- | Event decoder returns unit or fails
 -- |
 -- | hack or no hack?
-ignoreEscape :: EventDecoder Unit
-ignoreEscape event = do
+ignoreEscapeEvent :: Foreign -> BrowserEvent Unit
+ignoreEscapeEvent event = do
   keyCode <- event ! "keyCode" >>= readInt
   if keyCode == 27 -- ESC
-    then pure $ pure unit
+    then pure unit
     else fail (ForeignError "there is no escape")

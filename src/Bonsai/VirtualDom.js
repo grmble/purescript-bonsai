@@ -1552,7 +1552,6 @@ exports.attributeFn2 = attribute;
 exports.attributeFn3 = attributeNS;
 exports.style = style;
 exports.onFn3 = on;
-exports.mapPropertyFn3 = mapProperty;
 exports.lazyFn2 = lazy;
 exports.lazy2Fn3 = lazy2;
 exports.lazy3Fn4 = lazy3;
