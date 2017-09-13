@@ -7,51 +7,25 @@ where
 
 import Prelude
 
-import Control.Plus (class Alt, class Plus)
+import Control.Monad.Aff (Aff)
 import Data.Foreign (F)
 
 
 -- | A Command represents messages that should be applied to the Bonsai model
 -- |
 -- | It is a functor so event results can be mapped.
-data Cmd msg
+data Cmd aff msg
   = NoCmd
   | Cmd msg
+  | AsyncCmd (Aff aff msg)
 
-instance cmdFunctor :: Functor Cmd where
+instance cmdFunctor :: Functor (Cmd aff) where
   map _ NoCmd =
     NoCmd
   map f (Cmd msg) =
     Cmd $ f msg
-
-instance cmdApply :: Apply Cmd where
-  apply NoCmd _ =
-    NoCmd
-  apply _ NoCmd =
-    NoCmd
-  apply (Cmd f) (Cmd msg) =
-    Cmd $ f msg
-
-instance cmdApplicative :: Applicative Cmd where
-  pure msg =
-    Cmd msg
-
-instance cmdBind :: Bind Cmd where
-  bind NoCmd _ =
-    NoCmd
-  bind (Cmd msg) f =
-    f msg
-
-instance cmdAlt :: Alt Cmd where
-  alt NoCmd x =
-    x
-  alt x _ =
-    x
-
-instance cmdPlus :: Plus Cmd where
-  empty =
-    NoCmd
-
+  map f (AsyncCmd aff) =
+    AsyncCmd $ map f aff
 
 -- | A BrowserEvent is simply a decoded foreign
 -- |

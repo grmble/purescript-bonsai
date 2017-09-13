@@ -4,6 +4,7 @@ module Bonsai.VirtualDom
   , Property
   , Options
   , Patch
+  , Emitter
   , node
   , text
   , property
@@ -192,12 +193,12 @@ foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 -- EVENTS
 
 -- | A EventDecoder maps foreign events to message commands.
-type EventDecoder msg =
-  (Foreign -> F (Cmd msg))
+type EventDecoder eff msg =
+  (Foreign -> F (Cmd eff msg))
 
 -- internal concrete alias so we can get it into javascript
-type EventDecoderMap a b = (a -> b) -> EventDecoder a -> EventDecoder b
-eventDecoderMap :: forall a b. EventDecoderMap a b
+type EventDecoderMap eff a b = (a -> b) -> EventDecoder eff a -> EventDecoder eff b
+eventDecoderMap :: forall eff a b. EventDecoderMap eff a b
 eventDecoderMap fn decoder =
   map (map (map fn)) decoder
 
@@ -214,17 +215,17 @@ eventDecoderMap fn decoder =
 -- | `addEventListener`. Next you give a JSON decoder, which lets you pull
 -- | information out of the event object. If the decoder succeeds, it will produce
 -- | a message and route it to your `update` function.
-on :: forall msg. String -> (EventDecoder msg) -> Property msg
+on :: forall eff msg. String -> (EventDecoder eff msg) -> Property msg
 on eventName decoder =
   runFn3 onFn3 eventName defaultOptions decoder
 
 foreign import onFn3
-  :: forall msg
-  .  Fn3 String Options (EventDecoder msg) (Property msg)
+  :: forall eff msg
+  .  Fn3 String Options (EventDecoder eff msg) (Property msg)
 
 
 -- | Same as `on` but you can set a few options.
-onWithOptions :: forall msg. String -> Options -> EventDecoder msg -> Property msg
+onWithOptions :: forall aff msg. String -> Options -> EventDecoder aff msg -> Property msg
 onWithOptions =
   runFn3 onFn3
 
@@ -315,7 +316,7 @@ foreign import keyedNodeFn3 ::
 -- | where we don't really know if its a Right or Left (hard to determine
 -- | in browser independent javascript), but purescript knows.
 -- | So the purescript code returns true for success, false for error.
-type Emitter eff msg = F (Cmd msg) -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
+type Emitter eff aff msg = F (Cmd aff msg) -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
 
 -- | Render a virtual dom node to a DOM Element.
 -- |
@@ -323,19 +324,19 @@ type Emitter eff msg = F (Cmd msg) -> Eff (console::CONSOLE,dom::DOM,ref::REF|ef
 -- | and patching.  So after rendering once, diff and applyPatches
 -- | should be used.
 render
-  :: forall eff msg
-  .  Emitter eff msg
+  :: forall eff aff msg
+  .  Emitter eff aff msg
   -> VNode msg
   -> Element
 render = runFn3 renderFn3 cmdMap
 
 foreign import renderFn3
-  :: forall eff a msg
-  .  Fn3 (CmdMap a msg) (Emitter eff msg) (VNode msg) Element
+  :: forall eff aff a msg
+  .  Fn3 (CmdMap aff a msg) (Emitter eff aff msg) (VNode msg) Element
 
 -- internal concrete alias so we can get it into javascript
-type CmdMap a b = (a -> b) -> F (Cmd a) -> F (Cmd b)
-cmdMap :: forall a b. CmdMap a b
+type CmdMap aff a b = (a -> b) -> F (Cmd aff a) -> F (Cmd aff b)
+cmdMap :: forall aff a b. CmdMap aff a b
 cmdMap = map <<< map
 
 -- | A Patch for efficient updates.
@@ -355,8 +356,8 @@ foreign import diffFn2
 -- | The DOM element should be the one from the last
 -- | diff/applyPatches pass, or the initially rendered one.
 applyPatches
-  :: forall eff msg
-  .  Emitter eff msg
+  :: forall eff aff msg
+  .  Emitter eff aff msg
   -> Element
   -> VNode msg
   -> Patch msg
@@ -365,5 +366,5 @@ applyPatches emitter dnode vnode patch =
   pure $ runFn5 applyPatchesFn5 cmdMap emitter dnode vnode patch
 
 foreign import applyPatchesFn5
-  :: forall eff a msg
-  .  Fn5 (CmdMap a msg) (Emitter eff msg) Element (VNode msg) (Patch msg) Element
+  :: forall eff aff a msg
+  .  Fn5 (CmdMap aff a msg) (Emitter eff aff msg) Element (VNode msg) (Patch msg) Element

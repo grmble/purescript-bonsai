@@ -40,8 +40,7 @@ import Prelude
 
 
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
-import Bonsai.Types (Cmd, BrowserEvent)
-import Control.Plus (empty)
+import Bonsai.Types (Cmd(..), BrowserEvent)
 import Data.Array (range, catMaybes)
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
 import Data.Foreign.Index ((!))
@@ -77,9 +76,9 @@ onEnter enter =
     keyCode <- event ! "keyCode" >>= readInt
     case keyCode of
       13 -> -- Enter
-        pure $ pure enter
+        pure $ Cmd enter
       _ ->
-        pure $ empty
+        pure $ NoCmd
 
 preventDefaultStopPropagation :: Options
 preventDefaultStopPropagation =
@@ -88,17 +87,17 @@ preventDefaultStopPropagation =
   }
 
 -- | A empty decoder - will only ever emit noop commands
-emptyDecoder :: forall msg. Foreign -> F (Cmd msg)
-emptyDecoder _ = pure $ empty
+emptyDecoder :: forall aff msg. Foreign -> F (Cmd aff msg)
+emptyDecoder _ = pure $ NoCmd
 
 -- | A constant decoder - will always produce a constant command
-constantDecoder :: forall msg. msg -> Foreign -> F (Cmd msg)
-constantDecoder msg _ = pure $ pure msg
+constantDecoder :: forall aff msg. msg -> Foreign -> F (Cmd aff msg)
+constantDecoder msg _ = pure $ Cmd msg
 
 -- | Turn a BrowserEvent function into a decoder.
-decoder :: forall msg. (Foreign -> BrowserEvent msg) -> Foreign -> F (Cmd msg)
+decoder :: forall aff msg. (Foreign -> BrowserEvent msg) -> Foreign -> F (Cmd aff msg)
 decoder eventFn event =
-  pure <$> (eventFn event)
+  Cmd <$> (eventFn event)
 
 -- | The simplest possible browser event - the foreign event itself
 identityEvent :: Foreign -> BrowserEvent Foreign
