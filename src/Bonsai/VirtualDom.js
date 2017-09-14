@@ -488,10 +488,7 @@ function makeEventHandler(eventNode, info)
 			}
 
 			// emit the message to bonsai
-			var wasSuccess = emitter(message)();
-			if (! wasSuccess) {
-				console.log("original event was: ", JSON.stringify(event), event);
-			}
+			emitter(message)();
 		}
 	};
 

@@ -23,12 +23,8 @@ module Bonsai.Event
   ( module Bonsai.VirtualDom
   , onInput
   , onClick
-  , onEnter
-  , onSubmit
+  -- , onEnter
   , preventDefaultStopPropagation
-  , emptyDecoder
-  , constantDecoder
-  , decoder
   , targetValueEvent
   , targetFormValuesEvent
   , targetValuesEvent
@@ -39,9 +35,9 @@ where
 import Prelude
 
 
+import Bonsai.Types (BrowserEvent, EventDecoder, f2aff, pureCommand)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
-import Bonsai.Types (Cmd(..), BrowserEvent)
-import Data.Array (range, catMaybes)
+import Data.Array (catMaybes, range)
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
 import Data.Foreign.Index ((!))
 import Data.Maybe (Maybe(..))
@@ -53,32 +49,30 @@ import Data.Tuple (Tuple(..))
 -- | Suboptimal helper for the input event.
 onInput :: forall msg. (String -> msg) -> Property msg
 onInput f =
-  on "input" (decoder (map f <<< targetValueEvent))
+  on "input" (pure <<< map f <<< f2aff <<< targetValueEvent)
 
 -- | Event listener property for the click event.
 onClick :: forall msg. msg -> Property msg
 onClick msg =
-  on "click" (constantDecoder msg)
+  on "click" \_ -> pureCommand msg
 
--- | Event listener property for the submit event.
--- |
--- | Should be defined on the form. Will prevent default
--- | and stop propagation and will call the constructor
--- | with a map of the current form values.
-onSubmit :: Property (StrMap String)
-onSubmit =
-  onWithOptions "submit" preventDefaultStopPropagation (decoder targetValuesEvent)
 
--- | Emit commands on enter key presses
-onEnter :: forall msg. msg -> Property msg
-onEnter enter =
-  on "keydown" $ \event -> do
-    keyCode <- event ! "keyCode" >>= readInt
-    case keyCode of
-      13 -> -- Enter
-        pure $ Cmd enter
-      _ ->
-        pure $ NoCmd
+
+-- XXX: cant express this as Array (Aff aff msg)
+--      maybe Aff aff (Maybe msg) ???
+--
+-- -- | Emit commands on enter key presses
+-- onEnter :: forall msg. msg -> Property msg
+-- onEnter enter =
+--   on "enter" \event ->
+--     let
+--       boolArr = [f2aff (isEnterEvent event) ]
+--     in
+--       map
+--         (const (pure enter))
+--         (filter id boolArr)
+
+
 
 preventDefaultStopPropagation :: Options
 preventDefaultStopPropagation =
@@ -86,43 +80,38 @@ preventDefaultStopPropagation =
   , stopPropagation: true
   }
 
--- | A empty decoder - will only ever emit noop commands
-emptyDecoder :: forall aff msg. Foreign -> F (Cmd aff msg)
-emptyDecoder _ = pure $ NoCmd
-
--- | A constant decoder - will always produce a constant command
-constantDecoder :: forall aff msg. msg -> Foreign -> F (Cmd aff msg)
-constantDecoder msg _ = pure $ Cmd msg
-
--- | Turn a BrowserEvent function into a decoder.
-decoder :: forall aff msg. (Foreign -> BrowserEvent msg) -> Foreign -> F (Cmd aff msg)
-decoder eventFn event =
-  Cmd <$> (eventFn event)
-
 -- | The simplest possible browser event - the foreign event itself
-identityEvent :: Foreign -> BrowserEvent Foreign
+identityEvent :: EventDecoder Foreign
 identityEvent =
   pure
 
 -- | Read the value of the target input element
-targetValueEvent :: Foreign -> BrowserEvent String
+targetValueEvent :: EventDecoder String
 targetValueEvent event =
   event ! "target" ! "value" >>= readString
 
 -- ! Read the names and values of the target element's form.
-targetFormValuesEvent :: Foreign -> BrowserEvent (StrMap String)
+targetFormValuesEvent :: EventDecoder (StrMap String)
 targetFormValuesEvent event =
   event ! "target" ! "form" >>= namesAndValues
 
 -- | Read the names and values of target form, for form events.
-targetValuesEvent :: Foreign -> BrowserEvent (StrMap String)
+targetValuesEvent :: EventDecoder (StrMap String)
 targetValuesEvent event =
   event ! "target" >>= namesAndValues
+
+keyCodeEvent :: EventDecoder Int
+keyCodeEvent event =
+  event ! "keyCode" >>= readInt
+
+isEnterEvent :: EventDecoder Boolean
+isEnterEvent event =
+  map (\kc -> kc == 13) (keyCodeEvent event)
 
 -- | Read names and values from a (fake) foreign array.
 -- |
 -- | This is meant to be used on an array of dom nodes.
-namesAndValues :: Foreign -> BrowserEvent (StrMap String)
+namesAndValues :: EventDecoder (StrMap String)
 namesAndValues arr = do
   len <- arr ! "length" >>= readInt
   (fromFoldable <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))

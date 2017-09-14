@@ -4,7 +4,6 @@ module Bonsai.VirtualDom
   , Property
   , Options
   , Patch
-  , Emitter
   , node
   , text
   , property
@@ -26,13 +25,11 @@ where
 
 import Prelude
 
-import Bonsai.Types (Cmd)
+import Bonsai.Types (Cmd, CmdDecoder, Emitter)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
-import Control.Monad.Eff.Ref (REF)
 import DOM (DOM)
 import DOM.Node.Types (Element)
-import Data.Foreign (Foreign, F, toForeign)
+import Data.Foreign (Foreign, toForeign)
 import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, runFn2, runFn3, runFn4, runFn5)
 import Data.Tuple (Tuple)
 
@@ -192,14 +189,10 @@ foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 
 -- EVENTS
 
--- | A EventDecoder maps foreign events to message commands.
-type EventDecoder eff msg =
-  (Foreign -> F (Cmd eff msg))
-
 -- internal concrete alias so we can get it into javascript
-type EventDecoderMap eff a b = (a -> b) -> EventDecoder eff a -> EventDecoder eff b
-eventDecoderMap :: forall eff a b. EventDecoderMap eff a b
-eventDecoderMap fn decoder =
+type CmdDecoderMap eff a b = (a -> b) -> CmdDecoder eff a -> CmdDecoder eff b
+cmdDecoderMap :: forall eff a b. CmdDecoderMap eff a b
+cmdDecoderMap fn decoder =
   map (map (map fn)) decoder
 
 
@@ -215,17 +208,17 @@ eventDecoderMap fn decoder =
 -- | `addEventListener`. Next you give a JSON decoder, which lets you pull
 -- | information out of the event object. If the decoder succeeds, it will produce
 -- | a message and route it to your `update` function.
-on :: forall eff msg. String -> (EventDecoder eff msg) -> Property msg
+on :: forall eff msg. String -> (CmdDecoder eff msg) -> Property msg
 on eventName decoder =
   runFn3 onFn3 eventName defaultOptions decoder
 
 foreign import onFn3
   :: forall eff msg
-  .  Fn3 String Options (EventDecoder eff msg) (Property msg)
+  .  Fn3 String Options (CmdDecoder eff msg) (Property msg)
 
 
 -- | Same as `on` but you can set a few options.
-onWithOptions :: forall aff msg. String -> Options -> EventDecoder aff msg -> Property msg
+onWithOptions :: forall aff msg. String -> Options -> CmdDecoder aff msg -> Property msg
 onWithOptions =
   runFn3 onFn3
 
@@ -310,13 +303,6 @@ foreign import keyedNodeFn3 ::
   Fn3 String (Array (Property msg)) (Array (Tuple String (VNode msg))) (VNode msg)
 
 
--- | Emitters push Cmds into the bonsai event loop
--- |
--- | This is ultimately called from the javascript VirtualDom code
--- | where we don't really know if its a Right or Left (hard to determine
--- | in browser independent javascript), but purescript knows.
--- | So the purescript code returns true for success, false for error.
-type Emitter eff aff msg = F (Cmd aff msg) -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
 
 -- | Render a virtual dom node to a DOM Element.
 -- |
@@ -324,18 +310,18 @@ type Emitter eff aff msg = F (Cmd aff msg) -> Eff (console::CONSOLE,dom::DOM,ref
 -- | and patching.  So after rendering once, diff and applyPatches
 -- | should be used.
 render
-  :: forall eff aff msg
-  .  Emitter eff aff msg
+  :: forall aff msg
+  .  Emitter aff msg
   -> VNode msg
   -> Element
 render = runFn3 renderFn3 cmdMap
 
 foreign import renderFn3
-  :: forall eff aff a msg
-  .  Fn3 (CmdMap aff a msg) (Emitter eff aff msg) (VNode msg) Element
+  :: forall aff a msg
+  .  Fn3 (CmdMap aff a msg) (Emitter aff msg) (VNode msg) Element
 
 -- internal concrete alias so we can get it into javascript
-type CmdMap aff a b = (a -> b) -> F (Cmd aff a) -> F (Cmd aff b)
+type CmdMap aff a b = (a -> b) -> (Cmd aff a) -> (Cmd aff b)
 cmdMap :: forall aff a b. CmdMap aff a b
 cmdMap = map <<< map
 
@@ -357,7 +343,7 @@ foreign import diffFn2
 -- | diff/applyPatches pass, or the initially rendered one.
 applyPatches
   :: forall eff aff msg
-  .  Emitter eff aff msg
+  .  Emitter aff msg
   -> Element
   -> VNode msg
   -> Patch msg
@@ -366,5 +352,5 @@ applyPatches emitter dnode vnode patch =
   pure $ runFn5 applyPatchesFn5 cmdMap emitter dnode vnode patch
 
 foreign import applyPatchesFn5
-  :: forall eff aff a msg
-  .  Fn5 (CmdMap aff a msg) (Emitter eff aff msg) Element (VNode msg) (Patch msg) Element
+  :: forall aff a msg
+  .  Fn5 (CmdMap aff a msg) (Emitter aff msg) Element (VNode msg) (Patch msg) Element

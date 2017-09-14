@@ -12,22 +12,21 @@ where
 import Prelude
 
 import Bonsai.Debug (debugJsonObj, debugTiming, logJson, startTiming)
-import Bonsai.Types (Cmd(..))
+import Bonsai.Types (Cmd, Emitter, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (runAff)
+import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE)
-import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
+import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (REF, Ref, modifyRef, modifyRef', newRef, readRef, writeRef)
-import Control.Monad.Except (runExcept)
 import DOM (DOM)
 import DOM.Node.Node (appendChild)
 import DOM.Node.Types (Element, elementToNode)
 import Data.Array (null, snoc)
 import Data.Array.Partial (head, tail)
-import Data.Either (Either(..))
-import Data.Foreign (F)
+import Data.Foldable (for_)
 import Partial.Unsafe (unsafePartial)
 
 
@@ -57,7 +56,7 @@ type UpdateResult aff model msg =
 plainResult :: forall aff model msg. model -> UpdateResult aff model msg
 plainResult model =
   { model: model
-  , cmd: NoCmd
+  , cmd: emptyCommand
   }
 
 -- | Helper to map update results from sub-components
@@ -70,7 +69,7 @@ mapResult
 mapResult modelFn msgFn result =
   let { model:model2, cmd: cmd } = result
   in  { model: modelFn model2
-      , cmd: msgFn <$> cmd
+      , cmd: map (map msgFn) cmd
       }
 
 
@@ -129,49 +128,50 @@ debugProgram container dbgTiming dbgEvents updater renderer model = do
 
 
 -- | Queue a command that will be applied to the model.
-queueCommand
-  :: forall eff aff model msg
-  .  Program aff model msg
-  -> Cmd aff msg
-  -> Eff (console::CONSOLE,ref::REF|eff) Unit
-queueCommand env NoCmd =
-  pure unit
-
-queueCommand env (Cmd msg) = do
+queueMessage
+  :: forall eff model msg
+  .  Program eff model msg
+  -> msg
+  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+queueMessage env msg = do
   modifyRef env.pending \pending -> snoc pending msg
   pure unit
 
--- XXX: get the types to match ...
-queueCommand env (AsyncCmd aff) = do
-  _ <- unsafeCoerceEff $ runAff errCB successCB aff
-  pure unit
-  where
-    errCB err =
-      unsafeCoerceEff $ logJson "async error" err
-    successCB msg =
-      unsafeCoerceEff $ queueCommand env (Cmd msg)
+
+-- | Error callback for the Aff commands
+emitError :: forall eff. Error -> Eff (console::CONSOLE|eff) Unit
+emitError err =
+  logJson "cmd error: " err
+
+-- | Success callback for the Aff commands
+-- |
+-- | this will also step the model and redraw - it's called
+-- | asynchronously, we can't batch messages.
+emitSuccess
+  :: forall eff model msg
+  .  Program eff model msg
+  -> msg
+  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+emitSuccess env msg = do
+  queueMessage env msg
+  step env
 
 
 -- | Cmd emitter for the VirtualDom
+-- |
+-- | This is passed into the virtual dom js and calls our callbacks.
+-- | This can't batch messages
 emitter
-  :: forall eff aff model msg
-  .  Program aff model msg
-  -> F (Cmd aff msg)
-  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
-emitter env fcmd =
-  case runExcept fcmd of
-    Right cmd -> do
-      queueCommand env cmd
-      -- XXX requestAnimationFrame for bonus points
-      step env
-      pure true
-    Left err -> do
-      let _ = logJson "EventDecoder error:" err
-      pure false
+  :: forall eff model msg
+  .  Program eff model msg
+  -> Emitter (console::CONSOLE,dom::DOM,ref::REF|eff) msg
+emitter env cmd =
+  for_ cmd \aff -> do
+    runAff emitError (emitSuccess env) aff
 
 step
-  :: forall eff aff model msg
-  .  Program aff model msg
+  :: forall eff model msg
+  .  Program eff model msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 step env = do
   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
@@ -207,5 +207,5 @@ step env = do
       let msg = head msgs
       debugJsonObj env.dbgEvents "message event:" msg
       let {model:model2, cmd:cmd} = env.updater model msg
-      queueCommand env cmd
+      emitter env (unsafeCoerceAff <$> cmd)
       updateModel model2 $ tail msgs
