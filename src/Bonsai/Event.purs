@@ -23,7 +23,7 @@ module Bonsai.Event
   ( module Bonsai.VirtualDom
   , onInput
   , onClick
-  , onEnter
+  , onKeyEnter
   , preventDefaultStopPropagation
   , targetValueEvent
   , targetFormValuesEvent
@@ -34,7 +34,7 @@ where
 
 import Prelude
 
-import Bonsai.Types (BrowserEvent, Cmd, EventDecoder, f2cmd, emptyCommand, pureCommand)
+import Bonsai.Types (BrowserEvent, EventDecoder, f2cmd, emptyCommand, pureCommand)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
 import Data.Array (catMaybes, range)
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
@@ -56,17 +56,14 @@ onClick msg =
   on "click" \_ -> pureCommand msg
 
 
-
 -- | Emit commands on enter key presses
-onEnter :: forall msg. msg -> Property msg
-onEnter enter =
-  on "keydown" (f2cmd enterOrEmpty <<< isEnterEvent)
+onKeyEnter :: forall msg. (String -> msg) -> Property msg
+onKeyEnter cmdFn =
+  on "keydown" (f2cmd convert <<< enterKeyEvent)
   where
-    enterOrEmpty :: forall eff. Boolean -> Cmd eff msg
-    enterOrEmpty b =
-      if b
-        then pureCommand enter
-        else emptyCommand
+    convert Nothing = emptyCommand
+    convert (Just s) = pureCommand $ cmdFn s
+
 
 preventDefaultStopPropagation :: Options
 preventDefaultStopPropagation =
@@ -101,6 +98,15 @@ keyCodeEvent event =
 isEnterEvent :: EventDecoder Boolean
 isEnterEvent event =
   map (\kc -> kc == 13) (keyCodeEvent event)
+
+enterKeyEvent :: EventDecoder (Maybe String)
+enterKeyEvent event = do
+  isEnter <- isEnterEvent event
+  value   <- targetValueEvent event
+  if isEnter
+    then pure (Just value)
+    else pure Nothing
+
 
 -- | Read names and values from a (fake) foreign array.
 -- |
