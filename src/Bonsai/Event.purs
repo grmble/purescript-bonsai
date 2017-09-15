@@ -34,7 +34,7 @@ where
 
 import Prelude
 
-import Bonsai.Types (BrowserEvent, EventDecoder, f2aff, f2just, pureCommand)
+import Bonsai.Types (BrowserEvent, Cmd, EventDecoder, f2cmd, emptyCommand, pureCommand)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
 import Data.Array (catMaybes, range)
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
@@ -48,7 +48,7 @@ import Data.Tuple (Tuple(..))
 -- | Suboptimal helper for the input event.
 onInput :: forall msg. (String -> msg) -> Property msg
 onInput f =
-  on "input" (f2just <<< map f <<< targetValueEvent)
+  on "input" (f2cmd pureCommand <<< map f <<< targetValueEvent)
 
 -- | Event listener property for the click event.
 onClick :: forall msg. msg -> Property msg
@@ -60,10 +60,13 @@ onClick msg =
 -- | Emit commands on enter key presses
 onEnter :: forall msg. msg -> Property msg
 onEnter enter =
-  on "keydown" \event -> do
-    f2aff (isEnterEvent event) >>= \b ->
-      if b then pure $ Just enter else pure Nothing
-
+  on "keydown" (f2cmd enterOrEmpty <<< isEnterEvent)
+  where
+    enterOrEmpty :: forall eff. Boolean -> Cmd eff msg
+    enterOrEmpty b =
+      if b
+        then pureCommand enter
+        else emptyCommand
 
 preventDefaultStopPropagation :: Options
 preventDefaultStopPropagation =

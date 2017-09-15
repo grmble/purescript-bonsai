@@ -193,7 +193,7 @@ foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 type CmdDecoderMap eff a b = (a -> b) -> CmdDecoder eff a -> CmdDecoder eff b
 cmdDecoderMap :: forall eff a b. CmdDecoderMap eff a b
 cmdDecoderMap fn decoder =
-  map (map (map fn)) decoder
+  map (map fn) decoder
 
 
 -- | Create a custom event listener.
@@ -303,7 +303,6 @@ foreign import keyedNodeFn3 ::
   Fn3 String (Array (Property msg)) (Array (Tuple String (VNode msg))) (VNode msg)
 
 
-
 -- | Render a virtual dom node to a DOM Element.
 -- |
 -- | Initial step - the whole point in a VDom is the diffing
@@ -323,7 +322,7 @@ foreign import renderFn3
 -- internal concrete alias so we can get it into javascript
 type CmdMap aff a b = (a -> b) -> (Cmd aff a) -> (Cmd aff b)
 cmdMap :: forall aff a b. CmdMap aff a b
-cmdMap = map <<< map
+cmdMap = map
 
 -- | A Patch for efficient updates.
 newtype Patch msg =

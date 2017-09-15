@@ -11,8 +11,8 @@ where
 
 import Prelude
 
-import Bonsai.Debug (debugJsonObj, debugTiming, logJson, logJsonObj, startTiming)
-import Bonsai.Types (Cmd, Emitter, emptyCommand)
+import Bonsai.Debug (debugJsonObj, debugTiming, logJson, startTiming)
+import Bonsai.Types (Cmd(..), Emitter, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (runAff)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
@@ -26,8 +26,8 @@ import DOM.Node.Node (appendChild)
 import DOM.Node.Types (Element, elementToNode)
 import Data.Array (null, snoc)
 import Data.Array.Partial (head, tail)
-import Data.Maybe (Maybe(..))
 import Partial.Unsafe (unsafePartial)
+import Unsafe.Coerce (unsafeCoerce)
 
 
 -- | Program describes the Bonsai program.
@@ -69,7 +69,7 @@ mapResult
 mapResult modelFn msgFn result =
   let { model:model2, cmd: cmd } = result
   in  { model: modelFn model2
-      , cmd: map (map msgFn) cmd
+      , cmd: map msgFn cmd
       }
 
 
@@ -134,7 +134,6 @@ queueMessage
   -> msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 queueMessage env msg = do
-  logJson "queuing" msg
   modifyRef env.pending \pending -> snoc pending msg
   pure unit
 
@@ -150,34 +149,56 @@ emitError err =
 emitSuccess
   :: forall eff model msg
   .  Program eff model msg
-  -> Maybe msg
+  -> msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
-emitSuccess env msg =
-  case msg of
-    Just m -> do
-      queueMessage env m
-      step env
-    Nothing ->
-      pure unit
+emitSuccess env msg = do
+    queueMessage env msg
+    updateAndRedraw env
+
+-- | Queue a command, inform if any messages need processing
+queueCommand
+  :: forall eff model msg
+  .  Program eff model msg
+  -> Cmd eff msg
+  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
+queueCommand env cmd =
+  case cmd of
+    NoCmd ->
+      pure false
+    ErrCmd err -> do
+      emitError err
+      pure false
+    Cmd msg -> do
+      queueMessage env msg
+      pure true
+    Later aff -> do
+      _ <- runAff emitError (emitSuccess env) (unsafeCoerceAff aff)
+      pure false
 
 
 -- | Cmd emitter for the VirtualDom
 -- |
 -- | This is passed into the virtual dom js and calls our callbacks.
--- | This can't batch messages
 emitter
   :: forall eff model msg
   .  Program eff model msg
   -> Emitter (console::CONSOLE,dom::DOM,ref::REF|eff) msg
 emitter env cmd = do
-  _ <- runAff emitError (emitSuccess env) cmd
-  pure unit
+  mustUpdate <- queueCommand env (unsafeCoerce cmd)
+  if mustUpdate
+    then updateAndRedraw env
+    else pure unit
 
-step
+
+-- | Update from queued messages, then redraw
+-- |
+-- | This tries to batch messages up, only really possible
+-- | with synchronous messages though
+updateAndRedraw
   :: forall eff model msg
   .  Program eff model msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
-step env = do
+updateAndRedraw env = do
   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
 
   if null msgs
@@ -190,28 +211,28 @@ step env = do
 
       ts <- startTiming
       let vnode2 = env.renderer model2
-      debugTiming env.dbgTiming "render" ts
-
-      ts2 <- startTiming
       let patch = diff state.vnode vnode2
-      debugTiming env.dbgTiming "diff" ts2
-
-      ts3 <- startTiming
       dnode2 <- liftEff $ applyPatches (emitter env) state.dnode state.vnode patch
-      debugTiming env.dbgTiming "applyPatches" ts3
+      debugTiming env.dbgTiming "render/diff/applyPatches" ts
 
       writeRef env.state {model: model2, vnode: vnode2, dnode: dnode2}
 
       -- drain the pending queue!
-      step env
+      updateAndRedraw env
 
   where
+
+    -- processQueued maybeModel = do
+    --   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
+    --   if null msgs
+    --     then pure maybeModel
+    --     else do
+    --
+
     updateModel model [] = pure model
     updateModel model msgs = unsafePartial $ do
       let msg = head msgs
       debugJsonObj env.dbgEvents "message event:" msg
       let {model:model2, cmd:cmd} = env.updater model msg
-      -- XXX is async now, breaks
-      logJsonObj "update model updater cmd" cmd
-      emitter env (unsafeCoerceAff cmd)
+      _ <- queueCommand env (unsafeCoerce cmd)
       updateModel model2 $ tail msgs

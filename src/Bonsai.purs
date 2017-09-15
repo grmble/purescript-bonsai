@@ -11,7 +11,7 @@ where
 
 import Bonsai.Core (Program, UpdateResult, ProgramState, debugProgram, program, plainResult, mapResult)
 import Bonsai.DOM (domElementById)
-import Bonsai.Types (Cmd, EventDecoder, pureCommand, emptyCommand)
+import Bonsai.Types (Cmd, EventDecoder, pureCommand, emptyCommand, laterCommand)
 import Bonsai.VirtualDom (VNode, Property, Options, Patch
   , node, text, property, attribute, attributeNS, style
   , keyedNode)
