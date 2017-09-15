@@ -6,6 +6,7 @@ module Bonsai.Types
   , CmdDecoder
   , Emitter
   , f2aff
+  , f2just
   , emptyCommand
   , pureCommand
   )
@@ -19,12 +20,13 @@ import Control.Monad.Eff.Exception (error)
 import Control.Monad.Except (runExcept, throwError)
 import Data.Array (intercalate)
 import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
 import Data.Foreign (F, Foreign, renderForeignError)
 
 
 -- | A Command represents messages that should be applied to the Bonsai model
 type Cmd aff msg =
-  Array (Aff aff msg)
+  Aff aff (Maybe msg)
 
 -- | A BrowserEvent is simply a decoded foreign
 -- |
@@ -53,6 +55,7 @@ type Emitter aff msg
   -> Eff aff Unit
 
 
+-- | Helper to turn an F into an Aff
 f2aff
   :: forall a eff
   .  F a
@@ -62,11 +65,16 @@ f2aff fa = do
     Left errs -> throwError $ error $ intercalate ", " $ renderForeignError <$> errs
     Right a -> pure a
 
+f2just
+  :: forall a eff
+  .  F a
+  -> Aff eff (Maybe a)
+f2just fa = map Just (f2aff fa)
 
 -- | Produces an empty command.
 emptyCommand :: forall aff msg. Cmd aff msg
-emptyCommand = []
+emptyCommand = pure Nothing
 
 -- | Produces a pure command
 pureCommand :: forall aff msg. msg -> Cmd aff msg
-pureCommand msg = [ pure msg ]
+pureCommand msg = pure $ Just msg

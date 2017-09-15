@@ -23,7 +23,7 @@ module Bonsai.Event
   ( module Bonsai.VirtualDom
   , onInput
   , onClick
-  -- , onEnter
+  , onEnter
   , preventDefaultStopPropagation
   , targetValueEvent
   , targetFormValuesEvent
@@ -34,8 +34,7 @@ where
 
 import Prelude
 
-
-import Bonsai.Types (BrowserEvent, EventDecoder, f2aff, pureCommand)
+import Bonsai.Types (BrowserEvent, EventDecoder, f2aff, f2just, pureCommand)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
 import Data.Array (catMaybes, range)
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
@@ -49,7 +48,7 @@ import Data.Tuple (Tuple(..))
 -- | Suboptimal helper for the input event.
 onInput :: forall msg. (String -> msg) -> Property msg
 onInput f =
-  on "input" (pure <<< map f <<< f2aff <<< targetValueEvent)
+  on "input" (f2just <<< map f <<< targetValueEvent)
 
 -- | Event listener property for the click event.
 onClick :: forall msg. msg -> Property msg
@@ -58,20 +57,12 @@ onClick msg =
 
 
 
--- XXX: cant express this as Array (Aff aff msg)
---      maybe Aff aff (Maybe msg) ???
---
--- -- | Emit commands on enter key presses
--- onEnter :: forall msg. msg -> Property msg
--- onEnter enter =
---   on "enter" \event ->
---     let
---       boolArr = [f2aff (isEnterEvent event) ]
---     in
---       map
---         (const (pure enter))
---         (filter id boolArr)
-
+-- | Emit commands on enter key presses
+onEnter :: forall msg. msg -> Property msg
+onEnter enter =
+  on "keydown" \event -> do
+    f2aff (isEnterEvent event) >>= \b ->
+      if b then pure $ Just enter else pure Nothing
 
 
 preventDefaultStopPropagation :: Options

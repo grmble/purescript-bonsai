@@ -11,7 +11,7 @@ where
 
 import Prelude
 
-import Bonsai.Debug (debugJsonObj, debugTiming, logJson, startTiming)
+import Bonsai.Debug (debugJsonObj, debugTiming, logJson, logJsonObj, startTiming)
 import Bonsai.Types (Cmd, Emitter, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (runAff)
@@ -26,7 +26,7 @@ import DOM.Node.Node (appendChild)
 import DOM.Node.Types (Element, elementToNode)
 import Data.Array (null, snoc)
 import Data.Array.Partial (head, tail)
-import Data.Foldable (for_)
+import Data.Maybe (Maybe(..))
 import Partial.Unsafe (unsafePartial)
 
 
@@ -127,16 +127,16 @@ debugProgram container dbgTiming dbgEvents updater renderer model = do
   pure env
 
 
--- | Queue a command that will be applied to the model.
+-- | Queue a message that will be applied to the model.
 queueMessage
   :: forall eff model msg
   .  Program eff model msg
   -> msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 queueMessage env msg = do
+  logJson "queuing" msg
   modifyRef env.pending \pending -> snoc pending msg
   pure unit
-
 
 -- | Error callback for the Aff commands
 emitError :: forall eff. Error -> Eff (console::CONSOLE|eff) Unit
@@ -150,11 +150,15 @@ emitError err =
 emitSuccess
   :: forall eff model msg
   .  Program eff model msg
-  -> msg
+  -> Maybe msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
-emitSuccess env msg = do
-  queueMessage env msg
-  step env
+emitSuccess env msg =
+  case msg of
+    Just m -> do
+      queueMessage env m
+      step env
+    Nothing ->
+      pure unit
 
 
 -- | Cmd emitter for the VirtualDom
@@ -165,9 +169,9 @@ emitter
   :: forall eff model msg
   .  Program eff model msg
   -> Emitter (console::CONSOLE,dom::DOM,ref::REF|eff) msg
-emitter env cmd =
-  for_ cmd \aff -> do
-    runAff emitError (emitSuccess env) aff
+emitter env cmd = do
+  _ <- runAff emitError (emitSuccess env) cmd
+  pure unit
 
 step
   :: forall eff model msg
@@ -207,5 +211,7 @@ step env = do
       let msg = head msgs
       debugJsonObj env.dbgEvents "message event:" msg
       let {model:model2, cmd:cmd} = env.updater model msg
-      emitter env (unsafeCoerceAff <$> cmd)
+      -- XXX is async now, breaks
+      logJsonObj "update model updater cmd" cmd
+      emitter env (unsafeCoerceAff cmd)
       updateModel model2 $ tail msgs
