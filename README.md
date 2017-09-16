@@ -45,7 +45,7 @@ Edit src/Main.purs
       = Inc
       | Dec
 
-    update :: Model -> Msg -> UpdateResult Model Msg
+    update :: forall eff. Model -> Msg -> UpdateResult eff Model Msg
     update model msg = plainResult $
       case msg of
         Inc ->
