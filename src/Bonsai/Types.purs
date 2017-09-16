@@ -8,42 +8,50 @@ module Bonsai.Types
   , f2cmd
   , emptyCommand
   , pureCommand
-  , errCommand
+  , nowCommand
   , laterCommand
+  , delayCommand
   )
 where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff (Aff, delay)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (Error, error)
 import Control.Monad.Except (runExcept)
-import Data.Array (intercalate)
+import Data.Array (intercalate, singleton)
 import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, renderForeignError)
+import Data.Time.Duration (Milliseconds)
 
 
 -- | A Command represents messages that should be applied to the Bonsai model
 -- |
--- | * NoCmd means an empty message.
--- | * ErrCmd encodes an error.  Mainly so there is a central place
--- |   for logging errors that may come from the event decoding stage
--- |   or from errors in an asynchronous command.
--- | * Cmd carries a pure message that should be applied.
--- | * Later will produce a Cmd or ErrCmd some time in the future
+-- | There is no monoid instance and no apply because
+-- | combining commands would be easy, but doing so
+-- | in a performant way would be hard.
+-- |
+-- | The problem is that Later commands can not be batched,
+-- | as soon as a Later would show up in a big list,
+-- | you'd have a render for every command in the list.
+-- |
+-- | So this has to be done manually by the user:
+-- | If Pure is not powerful enough, switch to Now.
+-- | If Now does not cut it, use Later.  If you need
+-- | one command now and one later, you have to
+-- | arrange for the update of the immediate message
+-- | to trigger the second command.
 data Cmd eff msg
-  = NoCmd
-  | ErrCmd Error
-  | Cmd msg
-  | Later (Aff eff msg)
+  = Pure (Array msg)
+  | Now (Eff eff (Array msg))
+  | Later (Aff eff (Array msg))
 
 -- Cmd is a functor so VNodes/Events can be mapped
 instance cmdFunctor :: Functor (Cmd eff) where
-  map f NoCmd = NoCmd
-  map _ (ErrCmd s) = (ErrCmd s)
-  map f (Cmd msg) = Cmd $ f msg
-  map f (Later aff) = Later $ map f aff
+  map f (Pure ms) = Pure $ map f ms
+  map f (Now eff) = Now $ map (map f) eff
+  map f (Later aff) = Later $ map (map f) aff
 
 
 -- | A BrowserEvent is simply a decoded foreign
@@ -59,7 +67,7 @@ type EventDecoder msg =
 -- |
 -- | The CmdDecoder will be implemented using EventDecoders internally.
 type CmdDecoder aff msg =
-  (Foreign -> Cmd aff msg)
+  (Foreign -> Either Error (Cmd aff msg))
 
 -- | Emitters will get the Cmd into the Bonsai event loop.
 -- |
@@ -68,35 +76,41 @@ type CmdDecoder aff msg =
 -- | so an emitting function is provided that takes
 -- | care of all that.
 type Emitter aff msg
-  =  Cmd aff msg
+  =  Either Error (Cmd aff msg)
   -> Eff aff Unit
 
 
--- | Helper to turn an F into a Cmd
+-- | Helper to turn an F into emittable (Either Error Cmd)
 f2cmd
   :: forall a b eff
   .  (a -> Cmd eff b)
   -> F a
-  -> Cmd eff b
+  -> Either Error (Cmd eff b)
 f2cmd cmdFn fa =
   case runExcept fa of
     Left errs ->
-      ErrCmd $ error $ intercalate ", " $ renderForeignError <$> errs
+      Left $ error $ intercalate ", " $ renderForeignError <$> errs
     Right a ->
-      cmdFn a
+      Right $ cmdFn a
 
 -- | Produces an empty command.
 emptyCommand :: forall aff msg. Cmd aff msg
-emptyCommand = NoCmd
+emptyCommand = Pure []
 
 -- | Produces a pure command
 pureCommand :: forall aff msg. msg -> Cmd aff msg
-pureCommand = Cmd
+pureCommand msg = Pure [msg]
 
--- | Procuces an error command
-errCommand :: forall aff msg. Error -> Cmd aff msg
-errCommand = ErrCmd
+-- | Produces an effectful but synchronous command
+nowCommand :: forall aff msg. Eff aff msg -> Cmd aff msg
+nowCommand eff = Now $ map singleton eff
 
 -- | Produce an asynchronous command
 laterCommand :: forall aff msg. Aff aff msg -> Cmd aff msg
-laterCommand = Later
+laterCommand aff = Later $ map singleton aff
+
+-- | Produces a command in millis milliseconds
+delayCommand :: forall aff msg. Milliseconds -> msg -> Cmd aff msg
+delayCommand millis msg = Later $ do
+  delay millis
+  pure [ msg ]

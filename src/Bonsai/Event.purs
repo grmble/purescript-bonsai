@@ -16,7 +16,7 @@
 -- |    -- convenient but not optimal for handlers that get used a lot
 -- |    onInput MyMsg
 -- |    -- good because will compare equal
--- |    myMsgDecoder = decoder (MyMsg <$> targetValue)
+-- |    myMsgDecoder = (f2cmd pureCommand <<< map f <<< targetValueEvent)
 -- |    onInputMyMsg = on "input" myMsgDecoder
 -- |
 module Bonsai.Event
@@ -39,6 +39,7 @@ import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
 import Data.Array (catMaybes, range)
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
 import Data.Foreign.Index ((!))
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.StrMap (StrMap, fromFoldable)
 import Data.Traversable (traverse)
@@ -53,7 +54,7 @@ onInput f =
 -- | Event listener property for the click event.
 onClick :: forall msg. msg -> Property msg
 onClick msg =
-  on "click" \_ -> pureCommand msg
+  on "click" \_ -> Right $ pureCommand msg
 
 
 -- | Emit commands on enter key presses

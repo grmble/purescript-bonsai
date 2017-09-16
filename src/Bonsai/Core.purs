@@ -21,11 +21,13 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (REF, Ref, modifyRef, modifyRef', newRef, readRef, writeRef)
+import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import DOM (DOM)
 import DOM.Node.Node (appendChild)
 import DOM.Node.Types (Element, elementToNode)
-import Data.Array (null, snoc)
+import Data.Array (null)
 import Data.Array.Partial (head, tail)
+import Data.Either (Either(..))
 import Partial.Unsafe (unsafePartial)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -127,14 +129,14 @@ debugProgram container dbgTiming dbgEvents updater renderer model = do
   pure env
 
 
--- | Queue a message that will be applied to the model.
-queueMessage
+-- | Queue messages that will be applied to the model.
+queueMessages
   :: forall eff model msg
   .  Program eff model msg
-  -> msg
+  -> Array msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
-queueMessage env msg = do
-  modifyRef env.pending \pending -> snoc pending msg
+queueMessages env msgs = do
+  modifyRef env.pending \pending -> pending <> msgs
   pure unit
 
 -- | Error callback for the Aff commands
@@ -149,11 +151,13 @@ emitError err =
 emitSuccess
   :: forall eff model msg
   .  Program eff model msg
-  -> msg
+  -> Array msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
-emitSuccess env msg = do
-    queueMessage env msg
-    updateAndRedraw env
+emitSuccess env msgs = do
+    queueMessages env msgs
+    if null msgs
+      then pure unit
+      else updateAndRedraw env
 
 -- | Queue a command, inform if any messages need processing
 queueCommand
@@ -163,17 +167,18 @@ queueCommand
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
 queueCommand env cmd =
   case cmd of
-    NoCmd ->
-      pure false
-    ErrCmd err -> do
-      emitError err
-      pure false
-    Cmd msg -> do
-      queueMessage env msg
-      pure true
+    Pure ms ->
+      queueMs ms
+    Now eff -> do
+      ms <- unsafeCoerceEff eff
+      queueMs ms
     Later aff -> do
       _ <- runAff emitError (emitSuccess env) (unsafeCoerceAff aff)
       pure false
+  where
+    queueMs msgs = do
+      queueMessages env msgs
+      pure $ not $ null msgs
 
 
 -- | Cmd emitter for the VirtualDom
@@ -183,11 +188,16 @@ emitter
   :: forall eff model msg
   .  Program eff model msg
   -> Emitter (console::CONSOLE,dom::DOM,ref::REF|eff) msg
-emitter env cmd = do
-  mustUpdate <- queueCommand env (unsafeCoerce cmd)
-  if mustUpdate
-    then updateAndRedraw env
-    else pure unit
+emitter env ecmd =
+  case ecmd of
+    Left err ->
+      emitError err
+    Right cmd -> do
+      -- XXX: get rid of unsafeCoerce
+      mustUpdate <- queueCommand env (unsafeCoerce cmd)
+      if mustUpdate
+        then updateAndRedraw env
+        else pure unit
 
 
 -- | Update from queued messages, then redraw

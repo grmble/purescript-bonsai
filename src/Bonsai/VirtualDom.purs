@@ -27,11 +27,13 @@ import Prelude
 
 import Bonsai.Types (Cmd, CmdDecoder, Emitter)
 import Control.Monad.Eff (Eff)
-import DOM (DOM)
-import DOM.Node.Types (Element)
+import Control.Monad.Eff.Exception (Error)
+import Data.Either (Either)
 import Data.Foreign (Foreign, toForeign)
 import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, runFn2, runFn3, runFn4, runFn5)
 import Data.Tuple (Tuple)
+import DOM (DOM)
+import DOM.Node.Types (Element)
 
 -- | An immutable chunk of data representing a DOM node. This can be HTML or SVG.
 -- |
@@ -193,7 +195,7 @@ foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 type CmdDecoderMap eff a b = (a -> b) -> CmdDecoder eff a -> CmdDecoder eff b
 cmdDecoderMap :: forall eff a b. CmdDecoderMap eff a b
 cmdDecoderMap fn decoder =
-  map (map fn) decoder
+  map (map (map fn)) decoder
 
 
 -- | Create a custom event listener.
@@ -320,9 +322,9 @@ foreign import renderFn3
   .  Fn3 (CmdMap aff a msg) (Emitter aff msg) (VNode msg) Element
 
 -- internal concrete alias so we can get it into javascript
-type CmdMap aff a b = (a -> b) -> (Cmd aff a) -> (Cmd aff b)
+type CmdMap aff a b = (a -> b) -> (Either Error (Cmd aff a)) -> (Either Error (Cmd aff b))
 cmdMap :: forall aff a b. CmdMap aff a b
-cmdMap = map
+cmdMap f a = map (map f) a
 
 -- | A Patch for efficient updates.
 newtype Patch msg =
