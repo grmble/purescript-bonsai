@@ -12,7 +12,7 @@ where
 import Prelude
 
 import Bonsai.Debug (debugJsonObj, debugTiming, logJson, startTiming)
-import Bonsai.Types (Cmd(..), Emitter, emptyCommand)
+import Bonsai.Types (Cmd(TaskCmd, Cmd), Emitter, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (runAff)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
@@ -21,13 +21,14 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (REF, Ref, modifyRef, modifyRef', newRef, readRef, writeRef)
-import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import DOM (DOM)
 import DOM.Node.Node (appendChild)
 import DOM.Node.Types (Element, elementToNode)
-import Data.Array (null)
+import Data.Array (null, snoc)
 import Data.Array.Partial (head, tail)
 import Data.Either (Either(..))
+import Data.Foldable (for_)
+import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -135,9 +136,13 @@ queueMessages
   .  Program eff model msg
   -> Array msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
-queueMessages env msgs = do
-  modifyRef env.pending \pending -> pending <> msgs
-  pure unit
+queueMessages env msgs =
+  if null msgs
+    then pure unit
+    else do
+      debugJsonObj env.dbgEvents "queue messages:" msgs
+      modifyRef env.pending \pending -> pending <> msgs
+      pure unit
 
 -- | Error callback for the Aff commands
 emitError :: forall eff. Error -> Eff (console::CONSOLE|eff) Unit
@@ -167,18 +172,23 @@ queueCommand
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
 queueCommand env cmd =
   case cmd of
-    Pure ms ->
+    Cmd ms ->
       queueMs ms
-    Now eff -> do
-      ms <- unsafeCoerceEff eff
-      queueMs ms
-    Later aff -> do
+    TaskCmd task -> do
+      let ctx = { emitter: emitSuccess env }
+      let aff = task ctx
       _ <- runAff emitError (emitSuccess env) (unsafeCoerceAff aff)
       pure false
   where
     queueMs msgs = do
       queueMessages env msgs
       pure $ not $ null msgs
+
+
+
+-- | Unsafe coerce the effects of a Cmd.
+unsafeCoerceCmd :: forall eff1 eff2 msg. Cmd eff1 msg -> Cmd eff2 msg
+unsafeCoerceCmd cmd = unsafeCoerce cmd
 
 
 -- | Cmd emitter for the VirtualDom
@@ -193,56 +203,63 @@ emitter env ecmd =
     Left err ->
       emitError err
     Right cmd -> do
-      -- XXX: get rid of unsafeCoerce
-      mustUpdate <- queueCommand env (unsafeCoerce cmd)
+      mustUpdate <- queueCommand env (unsafeCoerceCmd cmd)
       if mustUpdate
         then updateAndRedraw env
         else pure unit
 
-
--- | Update from queued messages, then redraw
--- |
--- | This tries to batch messages up, only really possible
--- | with synchronous messages though
 updateAndRedraw
   :: forall eff model msg
   .  Program eff model msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 updateAndRedraw env = do
+  updateModel env
+  redrawModel env
+
+-- | Update from queued messages
+-- |
+-- | This tries to batch messages up, asynchronous
+-- | commands are a problem here
+updateModel
+  :: forall eff model msg
+  .  Program eff model msg
+  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+updateModel env = do
   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
 
   if null msgs
     then pure unit
     else do
 
+      -- apply all the messages in one block
       state <- liftEff $ readRef env.state
+      Tuple cmds model2 <- applyMessages (Tuple [] state.model) msgs
+      writeRef env.state (state {model = model2})
 
-      model2 <- updateModel state.model msgs
+      -- then queue all the new commands ...
+      for_ cmds (queueCommand env <<< unsafeCoerceCmd)
 
-      ts <- startTiming
-      let vnode2 = env.renderer model2
-      let patch = diff state.vnode vnode2
-      dnode2 <- liftEff $ applyPatches (emitter env) state.dnode state.vnode patch
-      debugTiming env.dbgTiming "render/diff/applyPatches" ts
-
-      writeRef env.state {model: model2, vnode: vnode2, dnode: dnode2}
-
-      -- drain the pending queue!
-      updateAndRedraw env
+      -- and repeat until no more messages are queued
+      updateModel env
 
   where
-
-    -- processQueued maybeModel = do
-    --   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
-    --   if null msgs
-    --     then pure maybeModel
-    --     else do
-    --
-
-    updateModel model [] = pure model
-    updateModel model msgs = unsafePartial $ do
+    applyMessages (Tuple cmds model) [] = pure $ Tuple cmds model
+    applyMessages (Tuple cmds model) msgs = unsafePartial $ do
       let msg = head msgs
       debugJsonObj env.dbgEvents "message event:" msg
       let {model:model2, cmd:cmd} = env.updater model msg
-      _ <- queueCommand env (unsafeCoerce cmd)
-      updateModel model2 $ tail msgs
+      applyMessages (Tuple (snoc cmds cmd) model2) $ tail msgs
+
+-- | Redraw the changed model
+redrawModel
+  :: forall eff model msg
+  .  Program eff model msg
+  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+redrawModel env = do
+  state <- liftEff $ readRef env.state
+  ts <- startTiming
+  let vnode2 = env.renderer state.model
+  let patch = diff state.vnode vnode2
+  dnode2 <- liftEff $ applyPatches (emitter env) state.dnode state.vnode patch
+  debugTiming env.dbgTiming "render/diff/applyPatches" ts
+  writeRef env.state (state {vnode = vnode2, dnode = dnode2})

@@ -1,58 +1,91 @@
--- | Bonsai Types
+-- | This module defines the central Bonsai types
+-- | that are used in the Core and VirtualDom modules.
 module Bonsai.Types
   ( BrowserEvent
   , Cmd(..)
-  , EventDecoder
   , CmdDecoder
   , Emitter
+  , EventDecoder
+  , Task
+  , TaskContext
   , f2cmd
   , emptyCommand
   , pureCommand
-  , nowCommand
-  , laterCommand
-  , delayCommand
+  , simpleTask
+  , readerTask
   )
 where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, delay)
+import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (Error, error)
+import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Except (runExcept)
-import Data.Array (intercalate, singleton)
+import DOM (DOM)
+import Data.Array (intercalate)
 import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, renderForeignError)
-import Data.Time.Duration (Milliseconds)
 
 
 -- | A Command represents messages that should be applied to the Bonsai model
 -- |
--- | There is no monoid instance and no apply because
--- | combining commands would be easy, but doing so
--- | in a performant way would be hard.
+-- | A command is either Pure (the constructor Cmd)
+-- | or an asynchronous Task.  The pure command simply contains
+-- | the messages that will be emitted.
+-- | The asynchronous Task gets an emitter function
+-- | that it can use to emit messages at will.
 -- |
--- | The problem is that Later commands can not be batched,
--- | as soon as a Later would show up in a big list,
--- | you'd have a render for every command in the list.
+-- | There is currently no effectful synchronous command -
+-- | there used to be, but it did not turn out very useful
+-- | except in dumbed down examples.
 -- |
--- | So this has to be done manually by the user:
--- | If Pure is not powerful enough, switch to Now.
--- | If Now does not cut it, use Later.  If you need
--- | one command now and one later, you have to
--- | arrange for the update of the immediate message
--- | to trigger the second command.
+-- | There could be a helper function that expresses simple
+-- | effectful commands as Tasks though.
 data Cmd eff msg
-  = Pure (Array msg)
-  | Now (Eff eff (Array msg))
-  | Later (Aff eff (Array msg))
+  = Cmd (Array msg)
+  | TaskCmd (Task eff msg)
 
 -- Cmd is a functor so VNodes/Events can be mapped
 instance cmdFunctor :: Functor (Cmd eff) where
-  map f (Pure ms) = Pure $ map f ms
-  map f (Now eff) = Now $ map (map f) eff
-  map f (Later aff) = Later $ map (map f) aff
+  map f (Cmd ms) =
+    Cmd $ map f ms
+  map f (TaskCmd task) =
+    TaskCmd $ mapTask f task
 
+-- | A Task is an asynchronous compution that
+-- | can emit messages at will via an emitting
+-- | functions in its TaskContext.
+-- |
+-- | It is a newtype because it has unusual needs:
+-- | the result type of the Aff is always unit,
+-- | so that part may not be mapped.  The emitting
+-- | function however needs to be mapped.
+type Task eff msg =
+  (TaskContext eff (Array msg)) -> (Aff eff (Array msg))
+
+mapTask :: forall eff a b. (a -> b) -> Task eff a -> Task eff b
+mapTask f ta contextB =
+  let
+    emitA :: Array a -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+    emitA as =
+      contextB.emitter $ map f as
+    contextA :: TaskContext eff (Array a)
+    contextA =
+      contextB { emitter = emitA }
+  in
+    map (map f) $ ta contextA
+
+-- | The Task Context holds the emitter function for the task
+-- |
+-- | Maybe: a way to get at the current model?
+-- | That would mean the model has to encoded in all the view functions
+-- | as well.  Maybe not a good idea.
+type TaskContext eff msg =
+  { emitter :: msg -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  }
 
 -- | A BrowserEvent is simply a decoded foreign
 -- |
@@ -95,22 +128,17 @@ f2cmd cmdFn fa =
 
 -- | Produces an empty command.
 emptyCommand :: forall aff msg. Cmd aff msg
-emptyCommand = Pure []
+emptyCommand = Cmd []
 
 -- | Produces a pure command
 pureCommand :: forall aff msg. msg -> Cmd aff msg
-pureCommand msg = Pure [msg]
+pureCommand msg = Cmd [msg]
 
--- | Produces an effectful but synchronous command
-nowCommand :: forall aff msg. Eff aff msg -> Cmd aff msg
-nowCommand eff = Now $ map singleton eff
 
--- | Produce an asynchronous command
-laterCommand :: forall aff msg. Aff aff msg -> Cmd aff msg
-laterCommand aff = Later $ map singleton aff
+-- | Produces a simple task (not cancellable, ony emits the return values
+simpleTask :: forall aff msg. Aff aff (Array msg) -> Cmd aff msg
+simpleTask aff = TaskCmd $ \_ -> aff
 
--- | Produces a command in millis milliseconds
-delayCommand :: forall aff msg. Milliseconds -> msg -> Cmd aff msg
-delayCommand millis msg = Later $ do
-  delay millis
-  pure [ msg ]
+-- | Procudes a task that can emit multiple times
+readerTask :: forall aff msg. Task aff msg -> Cmd aff msg
+readerTask = TaskCmd
