@@ -11,8 +11,9 @@ where
 
 import Prelude
 
+import Bonsai.DOM (domRequestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJson, startTiming)
-import Bonsai.Types (Cmd(TaskCmd, Cmd), Emitter, emptyCommand)
+import Bonsai.Types (Cmd(..), Emitter, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (runAff)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
@@ -83,6 +84,7 @@ mapResult modelFn msgFn result =
 -- | These are needed to advance the state in reaction to a Cmd message.
 type ProgramState model msg =
   { model :: model
+  , dirty :: Boolean
   , vnode :: VNode msg
   , dnode :: Element
   }
@@ -112,7 +114,7 @@ debugProgram container dbgTiming dbgEvents updater renderer model = do
   -- use a fake ProgramState so we have a ProgramEnv to render with
   -- (needed for the emitters)
   let vnode = renderer model
-  fakeState <- newRef { model: model, vnode: vnode, dnode: container }
+  fakeState <- newRef { model: model, vnode: vnode, dnode: container, dirty: false }
   pending   <- newRef []
   let env = { dbgTiming, dbgEvents, updater: updater
             , renderer: renderer, pending: pending, state: fakeState
@@ -120,11 +122,8 @@ debugProgram container dbgTiming dbgEvents updater renderer model = do
 
   ts <- startTiming
   let dnode = render (emitter env) vnode
-  debugTiming env.dbgTiming "initial render" ts
-
-  ts2 <- startTiming
   _ <- appendChild (elementToNode dnode) (elementToNode container)
-  debugTiming env.dbgTiming "append child" ts2
+  debugTiming env.dbgTiming "render/appendChild" ts
 
   modifyRef fakeState \state -> state { dnode = dnode }
   pure env
@@ -208,13 +207,15 @@ emitter env ecmd =
         then updateAndRedraw env
         else pure unit
 
+-- | Update the model from queued messages, then redraw
 updateAndRedraw
   :: forall eff model msg
   .  Program eff model msg
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 updateAndRedraw env = do
   updateModel env
-  redrawModel env
+  _ <- domRequestAnimationFrame (redrawModel env)
+  pure unit
 
 -- | Update from queued messages
 -- |
@@ -234,7 +235,7 @@ updateModel env = do
       -- apply all the messages in one block
       state <- liftEff $ readRef env.state
       Tuple cmds model2 <- applyMessages (Tuple [] state.model) msgs
-      writeRef env.state (state {model = model2})
+      writeRef env.state (state {model = model2, dirty = true})
 
       -- then queue all the new commands ...
       for_ cmds (queueCommand env <<< unsafeCoerceCmd)
@@ -257,9 +258,13 @@ redrawModel
   -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 redrawModel env = do
   state <- liftEff $ readRef env.state
-  ts <- startTiming
-  let vnode2 = env.renderer state.model
-  let patch = diff state.vnode vnode2
-  dnode2 <- liftEff $ applyPatches (emitter env) state.dnode state.vnode patch
-  debugTiming env.dbgTiming "render/diff/applyPatches" ts
-  writeRef env.state (state {vnode = vnode2, dnode = dnode2})
+  if state.dirty
+    then do
+      ts <- startTiming
+      let vnode2 = env.renderer state.model
+      let patch = diff state.vnode vnode2
+      dnode2 <- liftEff $ applyPatches (emitter env) state.dnode state.vnode patch
+      debugTiming env.dbgTiming "render/diff/applyPatches" ts
+      writeRef env.state (state {vnode = vnode2, dnode = dnode2, dirty = false})
+    else
+      pure unit
