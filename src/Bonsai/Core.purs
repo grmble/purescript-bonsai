@@ -2,10 +2,11 @@ module Bonsai.Core
   ( Program
   , UpdateResult
   , ProgramState
-  , program
   , debugProgram
-  , plainResult
+  , emitMessages
   , mapResult
+  , plainResult
+  , program
   )
 where
 
@@ -13,15 +14,16 @@ import Prelude
 
 import Bonsai.DOM (domRequestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJson, startTiming)
-import Bonsai.Types (Cmd(..), Emitter, emptyCommand)
+import Bonsai.Types (Cmd(..), Emitter, TaskContext, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
-import Control.Monad.Aff (runAff)
+import Control.Monad.Aff (Aff, runAff)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (REF, Ref, modifyRef, modifyRef', newRef, readRef, writeRef)
+import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import DOM (DOM)
 import DOM.Node.Node (appendChild)
 import DOM.Node.Types (Element, elementToNode)
@@ -174,7 +176,7 @@ queueCommand env cmd =
     Cmd ms ->
       queueMs ms
     TaskCmd task -> do
-      let ctx = { emitter: emitSuccess env }
+      let ctx = { emitter: emitTheTypeIsALie env }
       let aff = task ctx
       _ <- runAff emitError (emitSuccess env) (unsafeCoerceAff aff)
       pure false
@@ -182,6 +184,8 @@ queueCommand env cmd =
     queueMs msgs = do
       queueMessages env msgs
       pure $ not $ null msgs
+    emitTheTypeIsALie env2 msgs =
+      unsafeCoerceEff $ emitSuccess env2 msgs
 
 
 
@@ -206,6 +210,11 @@ emitter env ecmd =
       if mustUpdate
         then updateAndRedraw env
         else pure unit
+
+-- | Emit helper for Tasks.
+emitMessages :: forall aff msg. TaskContext aff (Array msg) -> Array msg -> Aff aff Unit
+emitMessages ctx msgs =
+  unsafeCoerceAff $ liftEff $ ctx.emitter msgs
 
 -- | Update the model from queued messages, then redraw
 updateAndRedraw

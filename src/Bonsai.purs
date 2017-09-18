@@ -9,7 +9,7 @@ module Bonsai
   )
 where
 
-import Bonsai.Core (Program, UpdateResult, ProgramState, debugProgram, program, plainResult, mapResult)
+import Bonsai.Core (Program, UpdateResult, ProgramState, debugProgram, emitMessages, mapResult, plainResult, program)
 import Bonsai.DOM (domElementById)
 import Bonsai.Types (Cmd(..), EventDecoder, pureCommand, emptyCommand, simpleTask, readerTask)
 import Bonsai.VirtualDom (VNode, Property, Options, Patch

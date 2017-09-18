@@ -6,7 +6,6 @@ module Bonsai.Types
   , CmdDecoder
   , Emitter
   , EventDecoder
-  , Task
   , TaskContext
   , f2cmd
   , emptyCommand
@@ -20,11 +19,8 @@ import Prelude
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (Error, error)
-import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Except (runExcept)
-import DOM (DOM)
 import Data.Array (intercalate)
 import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, renderForeignError)
@@ -44,9 +40,15 @@ import Data.Foreign (F, Foreign, renderForeignError)
 -- |
 -- | There could be a helper function that expresses simple
 -- | effectful commands as Tasks though.
+-- |
+-- | There used to be a helper type for TaskContext -> Aff but
+-- | for some reason it did not unify in user code.
+-- | So the recommendation is to produce the command,
+-- | not the function with complicated signature that goes
+-- | inside a TaskCmd.
 data Cmd eff msg
   = Cmd (Array msg)
-  | TaskCmd (Task eff msg)
+  | TaskCmd ((TaskContext eff (Array msg)) -> (Aff eff (Array msg)))
 
 -- Cmd is a functor so VNodes/Events can be mapped
 instance cmdFunctor :: Functor (Cmd eff) where
@@ -55,21 +57,14 @@ instance cmdFunctor :: Functor (Cmd eff) where
   map f (TaskCmd task) =
     TaskCmd $ mapTask f task
 
--- | A Task is an asynchronous compution that
--- | can emit messages at will via an emitting
--- | functions in its TaskContext.
--- |
--- | It is a newtype because it has unusual needs:
--- | the result type of the Aff is always unit,
--- | so that part may not be mapped.  The emitting
--- | function however needs to be mapped.
-type Task eff msg =
-  (TaskContext eff (Array msg)) -> (Aff eff (Array msg))
-
-mapTask :: forall eff a b. (a -> b) -> Task eff a -> Task eff b
+mapTask
+  :: forall eff a b
+  .  (a -> b)
+  -> (TaskContext eff (Array a) -> Aff eff (Array a))
+  -> (TaskContext eff (Array b) -> Aff eff (Array b))
 mapTask f ta contextB =
   let
-    emitA :: Array a -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+    emitA :: Array a -> Eff eff Unit
     emitA as =
       contextB.emitter $ map f as
     contextA :: TaskContext eff (Array a)
@@ -84,7 +79,7 @@ mapTask f ta contextB =
 -- | That would mean the model has to encoded in all the view functions
 -- | as well.  Maybe not a good idea.
 type TaskContext eff msg =
-  { emitter :: msg -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  { emitter :: msg -> Eff eff Unit
   }
 
 -- | A BrowserEvent is simply a decoded foreign
@@ -140,5 +135,8 @@ simpleTask :: forall aff msg. Aff aff (Array msg) -> Cmd aff msg
 simpleTask aff = TaskCmd $ \_ -> aff
 
 -- | Procudes a task that can emit multiple times
-readerTask :: forall aff msg. Task aff msg -> Cmd aff msg
+readerTask
+  :: forall aff msg
+  .  (TaskContext aff (Array msg) -> Aff aff (Array msg))
+  -> Cmd aff msg
 readerTask = TaskCmd
