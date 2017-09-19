@@ -88,3 +88,7 @@ Add a index.html in your project root
 Start pulp in server mode
 
     pulp server
+
+## Other examples
+
+A more involved example is at https://github.com/grmble/purescript-bonsai-todo

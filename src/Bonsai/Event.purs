@@ -24,11 +24,15 @@ module Bonsai.Event
   , onInput
   , onClick
   , onKeyEnter
+  , onKeyEnterEscape
   , preventDefaultStopPropagation
   , targetValueEvent
   , targetFormValuesEvent
   , targetValuesEvent
+  , keyCodeEvent
+  , enterEscapeKeyEvent
   , ignoreEscapeEvent
+  , dataAttributeEvent
   )
 where
 
@@ -37,9 +41,9 @@ import Prelude
 import Bonsai.Types (BrowserEvent, EventDecoder, f2cmd, emptyCommand, pureCommand)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
 import Data.Array (catMaybes, range)
+import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
 import Data.Foreign.Index ((!))
-import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.StrMap (StrMap, fromFoldable)
 import Data.Traversable (traverse)
@@ -60,10 +64,26 @@ onClick msg =
 -- | Emit commands on enter key presses
 onKeyEnter :: forall msg. (String -> msg) -> Property msg
 onKeyEnter cmdFn =
-  on "keydown" (f2cmd convert <<< enterKeyEvent)
+  on "keydown" (f2cmd convert <<< enterEscapeKeyEvent)
   where
-    convert Nothing = emptyCommand
-    convert (Just s) = pureCommand $ cmdFn s
+    convert Nothing =
+      emptyCommand
+    convert (Just (Left _)) =
+      emptyCommand
+    convert (Just (Right s)) =
+      pureCommand $ cmdFn s
+
+-- | Emit commands on enter or escape key presses
+onKeyEnterEscape :: forall msg. (String -> msg) -> (String -> msg) -> Property msg
+onKeyEnterEscape enterFn escFn =
+  on "keydown" (f2cmd convert <<< enterEscapeKeyEvent)
+  where
+    convert Nothing =
+      emptyCommand
+    convert (Just (Left s)) =
+      pureCommand $ escFn s
+    convert (Just (Right s)) =
+      pureCommand $ enterFn s
 
 
 preventDefaultStopPropagation :: Options
@@ -96,17 +116,18 @@ keyCodeEvent :: EventDecoder Int
 keyCodeEvent event =
   event ! "keyCode" >>= readInt
 
-isEnterEvent :: EventDecoder Boolean
-isEnterEvent event =
-  map (\kc -> kc == 13) (keyCodeEvent event)
-
-enterKeyEvent :: EventDecoder (Maybe String)
-enterKeyEvent event = do
-  isEnter <- isEnterEvent event
-  value   <- targetValueEvent event
-  if isEnter
-    then pure (Just value)
-    else pure Nothing
+-- | Event decoding helper: Right for ENTER, Left for ESC
+enterEscapeKeyEvent :: EventDecoder (Maybe (Either String String))
+enterEscapeKeyEvent event = do
+  kc    <- keyCodeEvent event
+  value <- targetValueEvent event
+  case kc of
+    13 -> -- ENTER
+      pure (Just (Right value))
+    27 -> -- ESCAPE
+      pure (Just (Left value))
+    _ ->
+      pure Nothing
 
 
 -- | Read names and values from a (fake) foreign array.
@@ -141,3 +162,18 @@ ignoreEscapeEvent event = do
   if keyCode == 27 -- ESC
     then pure unit
     else fail (ForeignError "there is no escape")
+
+
+-- | Event decoder decodes the value of a data attribute
+dataAttributeEvent :: String -> EventDecoder String
+dataAttributeEvent name event = do
+  target <- event ! "target"
+  go target
+  where
+  go elem = do
+    value <- elem ! "dataset" ! name
+    if isNullOrUndefined value
+      then do
+        parent <- elem ! "parentElement"
+        go parent
+      else readString value

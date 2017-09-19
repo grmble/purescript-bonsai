@@ -103,9 +103,12 @@ type CmdDecoder aff msg =
 -- | the internal structure of the purescript types,
 -- | so an emitting function is provided that takes
 -- | care of all that.
+-- |
+-- | On error, the emitter returns true to signal to javascript
+-- | that the originating event should be logged to the console.
 type Emitter aff msg
   =  Either Error (Cmd aff msg)
-  -> Eff aff Unit
+  -> Eff aff Boolean
 
 
 -- | Helper to turn an F into emittable (Either Error Cmd)

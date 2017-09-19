@@ -488,7 +488,9 @@ function makeEventHandler(eventNode, info)
 			}
 
 			// emit the message to bonsai
-			emitter(message)();
+			if (emitter(message)()) {
+				console.log("event that triggered error: ", event);
+			}
 		}
 	};
 

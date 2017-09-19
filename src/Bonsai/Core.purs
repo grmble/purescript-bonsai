@@ -13,7 +13,7 @@ where
 import Prelude
 
 import Bonsai.DOM (domRequestAnimationFrame)
-import Bonsai.Debug (debugJsonObj, debugTiming, logJson, startTiming)
+import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
 import Bonsai.Types (Cmd(..), Emitter, TaskContext, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (Aff, runAff)
@@ -148,7 +148,7 @@ queueMessages env msgs =
 -- | Error callback for the Aff commands
 emitError :: forall eff. Error -> Eff (console::CONSOLE|eff) Unit
 emitError err =
-  logJson "cmd error: " err
+  logJsonObj "cmd error: " err
 
 -- | Success callback for the Aff commands
 -- |
@@ -204,12 +204,12 @@ emitter
 emitter env ecmd =
   case ecmd of
     Left err ->
-      emitError err
+      emitError err *> pure true
     Right cmd -> do
       mustUpdate <- queueCommand env (unsafeCoerceCmd cmd)
       if mustUpdate
-        then updateAndRedraw env
-        else pure unit
+        then updateAndRedraw env *> pure false
+        else pure false
 
 -- | Emit helper for Tasks.
 emitMessages :: forall aff msg. TaskContext aff (Array msg) -> Array msg -> Aff aff Unit
