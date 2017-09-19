@@ -1,7 +1,5 @@
 "use strict";
 
-// stolen^H^H^H^H^H^H heavily inspired by purescript-debug Trace.js
-
 // Alias require to prevent webpack or browserify from actually requiring.
 var req = typeof module === "undefined" ? undefined : module.require;
 var util = req === undefined ? undefined : req("util");
@@ -17,7 +15,7 @@ exports.logObj = function (msg) {
       } else {
         console.log(msg, obj);
       }
-      return obj;      
+      return obj;
     };
   };
 };

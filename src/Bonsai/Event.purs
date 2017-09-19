@@ -5,38 +5,43 @@
 -- |  For this, you have call on with a top level function
 -- |  event decoder.
 -- |
--- |  So for top VDOM diff/patching performance, instead of
--- |  using onInput, you would make a top level function
+-- |  This module defines composable BrowserEvents and
+-- |  utility functions that use them.  For maximum performance,
+-- |  you should define your own toplevel helpers
+-- |  with a composed BrowserEvent of your choice.
 -- |
--- |    decodeXxx event = eventDecoder Xxx targetValue
 -- |
--- |    -- use it like
--- |    on "input" decodeXxx
+-- |  Example:
 -- |
--- |  Or you might just have a single event handler on a
--- |  parent element and look at the event target.
-
+-- |    -- convenient but not optimal for handlers that get used a lot
+-- |    onInput MyMsg
+-- |    -- good because will compare equal
+-- |    myMsgDecoder = (f2cmd pureCommand <<< map f <<< targetValueEvent)
+-- |    onInputMyMsg = on "input" myMsgDecoder
+-- |
 module Bonsai.Event
-  ( onInput
-  , onInputWithOptions
+  ( module Bonsai.VirtualDom
+  , onInput
   , onClick
-  , onClickWithOptions
-  , onEnter
-  , onSubmit
+  , onKeyEnter
+  , onKeyEnterEscape
   , preventDefaultStopPropagation
-  , targetValue
-  , targetFormValues
-  , targetValues
-  , ignoreEscape
+  , targetValueEvent
+  , targetFormValuesEvent
+  , targetValuesEvent
+  , keyCodeEvent
+  , enterEscapeKeyEvent
+  , ignoreEscapeEvent
+  , dataAttributeEvent
   )
 where
 
 import Prelude
 
-
-import Bonsai.VirtualDom (Options, Property, EventDecoder, on, onWithOptions)
-import Control.Plus (empty)
-import Data.Array (range, catMaybes)
+import Bonsai.Types (BrowserEvent, EventDecoder, f2cmd, emptyCommand, pureCommand)
+import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
+import Data.Array (catMaybes, range)
+import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readInt, readString, fail)
 import Data.Foreign.Index ((!))
 import Data.Maybe (Maybe(..))
@@ -45,47 +50,41 @@ import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 
 
--- | Event listener property for the input event.
--- |
--- | Should be defined on an input. Will call
--- | the message constructor with the current value
--- | of the input element.
-onInput :: Property String
-onInput =
-  on "input" targetValue
-
-onInputWithOptions :: Options -> Property String
-onInputWithOptions options =
-  onWithOptions "input" options targetValue
+-- | Suboptimal helper for the input event.
+onInput :: forall msg. (String -> msg) -> Property msg
+onInput f =
+  on "input" (f2cmd pureCommand <<< map f <<< targetValueEvent)
 
 -- | Event listener property for the click event.
 onClick :: forall msg. msg -> Property msg
 onClick msg =
-  on "click" (const $ pure $ pure msg)
+  on "click" \_ -> Right $ pureCommand msg
 
-onClickWithOptions :: forall msg. Options -> msg -> Property msg
-onClickWithOptions options msg =
-  onWithOptions "click" options (const $ pure $ pure msg)
-
--- | Event listener property for the submit event.
--- |
--- | Should be defined on the form. Will prevent default
--- | and stop propagation and will call the constructor
--- | with a map of the current form values.
-onSubmit :: Property (StrMap String)
-onSubmit =
-  onWithOptions "submit" preventDefaultStopPropagation targetValues
 
 -- | Emit commands on enter key presses
-onEnter :: forall msg. msg -> Property msg
-onEnter enter =
-  on "keydown" $ \event -> do
-    keyCode <- event ! "keyCode" >>= readInt
-    case keyCode of
-      13 -> -- Enter
-        pure $ pure enter
-      _ ->
-        pure $ empty
+onKeyEnter :: forall msg. (String -> msg) -> Property msg
+onKeyEnter cmdFn =
+  on "keydown" (f2cmd convert <<< enterEscapeKeyEvent)
+  where
+    convert Nothing =
+      emptyCommand
+    convert (Just (Left _)) =
+      emptyCommand
+    convert (Just (Right s)) =
+      pureCommand $ cmdFn s
+
+-- | Emit commands on enter or escape key presses
+onKeyEnterEscape :: forall msg. (String -> msg) -> (String -> msg) -> Property msg
+onKeyEnterEscape enterFn escFn =
+  on "keydown" (f2cmd convert <<< enterEscapeKeyEvent)
+  where
+    convert Nothing =
+      emptyCommand
+    convert (Just (Left s)) =
+      pureCommand $ escFn s
+    convert (Just (Right s)) =
+      pureCommand $ enterFn s
+
 
 preventDefaultStopPropagation :: Options
 preventDefaultStopPropagation =
@@ -93,26 +92,51 @@ preventDefaultStopPropagation =
   , stopPropagation: true
   }
 
+-- | The simplest possible browser event - the foreign event itself
+identityEvent :: EventDecoder Foreign
+identityEvent =
+  pure
+
 -- | Read the value of the target input element
-targetValue :: EventDecoder String
-targetValue value =
-  pure <$> (value ! "target" ! "value" >>= readString)
+targetValueEvent :: EventDecoder String
+targetValueEvent event =
+  event ! "target" ! "value" >>= readString
 
 -- ! Read the names and values of the target element's form.
-targetFormValues :: EventDecoder (StrMap String)
-targetFormValues value =
-  value ! "target" ! "form" >>= namesAndValues
+targetFormValuesEvent :: EventDecoder (StrMap String)
+targetFormValuesEvent event =
+  event ! "target" ! "form" >>= namesAndValues
 
 -- | Read the names and values of target form, for form events.
-targetValues :: EventDecoder (StrMap String)
-targetValues value =
-  value ! "target" >>= namesAndValues
+targetValuesEvent :: EventDecoder (StrMap String)
+targetValuesEvent event =
+  event ! "target" >>= namesAndValues
 
--- | Read a strmap of values from a (fake) array of input elements
+keyCodeEvent :: EventDecoder Int
+keyCodeEvent event =
+  event ! "keyCode" >>= readInt
+
+-- | Event decoding helper: Right for ENTER, Left for ESC
+enterEscapeKeyEvent :: EventDecoder (Maybe (Either String String))
+enterEscapeKeyEvent event = do
+  kc    <- keyCodeEvent event
+  value <- targetValueEvent event
+  case kc of
+    13 -> -- ENTER
+      pure (Just (Right value))
+    27 -> -- ESCAPE
+      pure (Just (Left value))
+    _ ->
+      pure Nothing
+
+
+-- | Read names and values from a (fake) foreign array.
+-- |
+-- | This is meant to be used on an array of dom nodes.
 namesAndValues :: EventDecoder (StrMap String)
 namesAndValues arr = do
   len <- arr ! "length" >>= readInt
-  (pure <<< fromFoldable <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
+  (fromFoldable <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
 
 nameAndValue :: Foreign -> Int -> F (Maybe (Tuple String String))
 nameAndValue arr idx = do
@@ -132,9 +156,24 @@ isNullOrUndefined value =
 -- | Event decoder returns unit or fails
 -- |
 -- | hack or no hack?
-ignoreEscape :: EventDecoder Unit
-ignoreEscape event = do
+ignoreEscapeEvent :: Foreign -> BrowserEvent Unit
+ignoreEscapeEvent event = do
   keyCode <- event ! "keyCode" >>= readInt
   if keyCode == 27 -- ESC
-    then pure $ pure unit
+    then pure unit
     else fail (ForeignError "there is no escape")
+
+
+-- | Event decoder decodes the value of a data attribute
+dataAttributeEvent :: String -> EventDecoder String
+dataAttributeEvent name event = do
+  target <- event ! "target"
+  go target
+  where
+  go elem = do
+    value <- elem ! "dataset" ! name
+    if isNullOrUndefined value
+      then do
+        parent <- elem ! "parentElement"
+        go parent
+      else readString value

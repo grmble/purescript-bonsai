@@ -1,6 +1,4 @@
 -- | Heaviliy inspirec by purescript-debug
--- |
--- | These should have CONSOLE effect really.
 module Bonsai.Debug
   (StartTiming, debugJsonObj, debugTiming, logObj, logJson, logJsonObj, logTiming, startTiming)
 where

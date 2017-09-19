@@ -3,10 +3,18 @@
 Functional web programming in Purescript.  Heavily inspired by Elm & using
 the Elm Virtual DOM.
 
-Not really ready for public consumption.  Things will change and
+*DISCLAIMER*: Not ready for public consumption.  Things will change and
 break in major ways.  No support for HTML yet - you have to write
-out all your virtual DOM nodes by hand.  No Ajax requests, no
-local storage.  You name it, we ain't got it ...  yet.
+out all your virtual DOM nodes by hand.
+
+It does have:
+
+* Elm's Virtual DOM as backend
+* Event/command system for functional updates to the virtual DOM
+* Integration of event/command system with purecript's Eff and Aff.
+  Commands can be effectful (e.g. accessing local storage) or
+  even asynchronous (e.g. an ajax request, or a delayed update to the
+  page).
 
 ## Getting started
 
@@ -37,7 +45,7 @@ Edit src/Main.purs
       = Inc
       | Dec
 
-    update :: Model -> Msg -> UpdateResult Model Msg
+    update :: forall eff. Model -> Msg -> UpdateResult eff Model Msg
     update model msg = plainResult $
       case msg of
         Inc ->
@@ -80,3 +88,8 @@ Add a index.html in your project root
 Start pulp in server mode
 
     pulp server
+
+
+## Other examples
+
+A more involved example is at https://github.com/grmble/purescript-bonsai-todo
