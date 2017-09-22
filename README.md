@@ -30,10 +30,12 @@ Edit src/Main.purs
 
     module Main where
 
-    import Prelude
+    import Prelude hiding (div)
 
     import Bonsai
-    import Bonsai.Event
+    import Bonsai.Html
+    import Bonsai.Html.Attributes
+    import Bonsai.Html.Events
     import Data.Maybe
     import DOM
     import DOM.Node.Types
@@ -55,16 +57,12 @@ Edit src/Main.purs
 
     view :: Model -> VNode Msg
     view model =
-      node "div" []
-        [ text $ show model
-        , node "button"
-            [ onClick Inc ]
-            [ text "+"]
-        , node "button"
-            [ onClick Dec ]
-            [ text "-" ]
-        ]
 
+      render $
+        div $ do
+          text $ show model
+          button ! onClick Inc $ do text "+"
+          button ! onClick Dec $ do text "-"
 
     main = unsafePartial $ do
       Just mainDiv  <- domElementById (ElementId "main")
