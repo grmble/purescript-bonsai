@@ -1,6 +1,6 @@
 -- | Bonsai HTML Attribute Helpers
 -- |
--- | Mostly transcribed from Elm.
+-- | Mostly transcribed from Elm with omissions - only the most frequently used.
 module Bonsai.Html.Attributes
 where
 
