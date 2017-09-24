@@ -4,16 +4,32 @@
 -- | A LOT, you should call on with a top level function.
 -- | See explanation in Bonsai.EventDecoder
 module Bonsai.Html.Events
+  ( module Bonsai.VirtualDom
+  , preventDefaultStopPropagation
+  , onClick
+  , onInput
+  , onKeyEnter
+  , onKeyEnterEscape
+  , onSubmit
+  )
 where
 
 import Prelude
 
-import Bonsai.EventDecoder (enterEscapeKeyEvent, targetValueEvent)
+import Bonsai.EventDecoder (enterEscapeKeyEvent, targetValueEvent, targetValuesEvent)
 import Bonsai.Types (emptyCommand, f2cmd, pureCommand)
-import Bonsai.VirtualDom (Property, on)
+import Bonsai.VirtualDom (Property, Options, on)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
+import Data.StrMap (StrMap)
 
+
+-- | Event options: prevent default, stop propagation
+preventDefaultStopPropagation :: Options
+preventDefaultStopPropagation =
+  { preventDefault: true
+  , stopPropagation: true
+  }
 
 -- | Suboptimal helper for the input event.
 onInput :: forall msg. (String -> msg) -> Property msg
@@ -49,3 +65,8 @@ onKeyEnterEscape enterFn escFn =
       pureCommand $ escFn s
     convert (Just (Right s)) =
       pureCommand $ enterFn s
+
+-- | Emit a command on form submit.
+onSubmit :: forall msg. (StrMap String -> msg) -> Property msg
+onSubmit cmdFn =
+  on "submit" (f2cmd (pureCommand <<< cmdFn) <<< targetValuesEvent)

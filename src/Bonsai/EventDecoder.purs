@@ -21,7 +21,6 @@
 -- |
 module Bonsai.EventDecoder
   ( module Bonsai.VirtualDom
-  , preventDefaultStopPropagation
   , targetValueEvent
   , targetFormValuesEvent
   , targetValuesEvent
@@ -44,13 +43,6 @@ import Data.Maybe (Maybe(..))
 import Data.StrMap (StrMap, fromFoldable)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-
-
-preventDefaultStopPropagation :: Options
-preventDefaultStopPropagation =
-  { preventDefault: true
-  , stopPropagation: true
-  }
 
 -- | The simplest possible browser event - the foreign event itself
 identityEvent :: EventDecoder Foreign
