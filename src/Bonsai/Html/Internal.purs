@@ -3,10 +3,12 @@
 -- | Implements the HTML DSL.
 -- | Heavily inspired by Smolder.
 module Bonsai.Html.Internal
-  ( Style(..)
-  , Content
-  , ContentF
-  , ContentT
+  ( class HasAttribute
+  , class HasStyle
+  , Style
+  , Markup
+  , MarkupF
+  , MarkupT
   , (!)
   , (!?)
   , (#!)
@@ -15,14 +17,15 @@ module Bonsai.Html.Internal
   , stringProperty
   , booleanProperty
   , text
-  , emptyElement
-  , element
+  , leaf
+  , parent
   , keyedElement
   , render
   , withAttribute
   , withStyle
   , withOptionalAttribute
   , withOptionalStyle
+  , vnode
   )
 where
 
@@ -35,12 +38,17 @@ import Data.Array (snoc, null)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 
+
+
+-- Styles and Properties
+
+
+
 -- | A style that will be collected for VD.style
-data Style =
-  Style
-    { name :: String
-    , value :: String
-    }
+type Style =
+  { name :: String
+  , value :: String
+  }
 
 -- | Create a custom attribute
 attribute :: forall msg. String -> String -> VD.Property msg
@@ -58,93 +66,60 @@ booleanProperty =
   VD.property
 
 
--- | Content record type alias
-type ContentRec msg =
+
+-- Markup DSL ... smolder name, best name
+
+
+
+-- | Element record type alias
+type Element msg =
   { name :: String
   , attribs :: Array (VD.Property msg)
   , styles :: Array Style
-  , content :: ContentT msg
+  , content :: MarkupT msg
   }
 
--- | Content Functor for the DSL
-data ContentF msg a
-  = ContentF (ContentRec msg) a
+-- | Markup Functor for the DSL
+data MarkupF msg a
+  = ElementF (Element msg) a
   | VNodeF (VD.VNode msg) a
   | EmptyF a
 
-instance functorContentF :: Functor (ContentF msg) where
-  map f (ContentF rec x) = ContentF rec (f x)
+instance functorMarkupF :: Functor (MarkupF msg) where
+  map f (ElementF rec x) = ElementF rec (f x)
   map f (VNodeF v x) = VNodeF v (f x)
   map f (EmptyF x) = EmptyF (f x)
 
-type Content msg = Free (ContentF msg)
-type ContentT msg = Content msg Unit
+type Markup msg = Free (MarkupF msg)
+type MarkupT msg = Markup msg Unit
 
--- | Attach an attribute to a content node. Also !
-withAttribute
-  :: forall msg
-  .  (ContentT msg -> ContentT msg)
-  -> VD.Property msg
-  -> (ContentT msg -> ContentT msg)
-withAttribute cfn p =
-  \child -> hoistFree go (cfn child)
-  where
-    go :: ContentF msg ~> ContentF msg
-    go (ContentF rec x) = ContentF (rec { attribs = snoc rec.attribs p }) x
-    go x = x
 
--- ! Attach an optional attribute. Also !?
-withOptionalAttribute
-  :: forall msg
-  .  (ContentT msg -> ContentT msg)
-  -> Maybe (VD.Property msg)
-  -> (ContentT msg -> ContentT msg)
-withOptionalAttribute cfn Nothing =
-  cfn
-withOptionalAttribute cfn (Just p) =
-  withAttribute cfn p
-
--- | Attach a style to a content node. Also #!
-withStyle
-  :: forall msg
-  .  (ContentT msg -> ContentT msg)
-  -> Style
-  -> (ContentT msg -> ContentT msg)
-withStyle cfn st =
-  \child -> hoistFree go (cfn child)
-  where
-    go :: ContentF msg ~> ContentF msg
-    go (ContentF rec x) = ContentF (rec { styles = snoc rec.styles st }) x
-    go x = x
-
--- | Attach an optional style to a content node. Also #!?
-withOptionalStyle
-  :: forall msg
-  .  (ContentT msg -> ContentT msg)
-  -> Maybe Style
-  -> (ContentT msg -> ContentT msg)
-withOptionalStyle cfn Nothing =
-  cfn
-withOptionalStyle cfn (Just st) =
-  withStyle cfn st
-
-infixl 4 withAttribute as !
-infixl 4 withOptionalAttribute as !?
-infixl 4 withStyle as #!
-infixl 4 withOptionalStyle as #!?
+-- | Wrap a (already rendered?) VNode
+vnode :: forall msg. VD.VNode msg -> MarkupT msg
+vnode v =
+  liftF $ VNodeF v unit
 
 -- | Create a text node.
-text :: forall msg. String -> ContentT msg
+text :: forall msg. String -> MarkupT msg
 text s =
-  liftF $ VNodeF (VD.text s) unit
+  vnode (VD.text s)
 
-emptyContent :: forall msg. ContentT msg
-emptyContent = liftF $ EmptyF unit
+emptyMarkup :: forall msg. MarkupT msg
+emptyMarkup = liftF $ EmptyF unit
 
--- | Create a empty element - will not have children.
-emptyElement :: forall msg. String -> ContentT msg
-emptyElement name =
-  liftF $ ContentF { name, attribs: [], styles: [], content: emptyContent } unit
+-- | Create a leaf element - will not have children
+leaf :: forall msg. String -> MarkupT msg
+leaf name =
+  liftF $ ElementF { name, attribs: [], styles: [], content: emptyMarkup } unit
+
+-- | Create an element with children.
+parent
+  :: forall msg
+  .  String
+  -> MarkupT msg
+  -> MarkupT msg
+parent name content =
+  liftF $ ElementF { name, attribs: [], styles: [], content: content } unit
 
 -- | keyedElement renders to a VirtualDom keyedNode.
 -- | The DSL does not work here to give it attributes and/or styles
@@ -153,22 +128,84 @@ keyedElement
   .  String
   -> Array (VD.Property msg)
   -> Array (Tuple String (VD.VNode msg))
-  -> ContentT msg
+  -> MarkupT msg
 keyedElement name attrs children =
-  liftF $ VNodeF (VD.keyedNode name attrs children) unit
+  vnode (VD.keyedNode name attrs children)
 
--- | Create an element with children.
-element
-  :: forall msg
-  .  String
-  -> ContentT msg
-  -> ContentT msg
-element name content =
-  liftF $ ContentF { name, attribs: [], styles: [], content: content } unit
+
+
+-- DSL for attributes/styles
+
+class HasAttribute a b | a -> b where
+  -- | Add an attribute to element node
+  withAttribute :: a -> b -> a
+
+class HasStyle a where
+  -- | Add a style to an element node
+  withStyle :: a -> Style -> a
+
+instance hasAttributeMarkup :: HasAttribute (Free (MarkupF msg) Unit) (VD.Property msg) where
+  withAttribute elem prop =
+    hoistFree go elem
+    where
+      go :: MarkupF msg ~> MarkupF msg
+      go (ElementF rec x) = ElementF (rec { attribs = snoc rec.attribs prop }) x
+      go x = x
+
+instance hasStyleMarkup :: HasStyle (Free (MarkupF msg) Unit) where
+  withStyle elem st =
+    hoistFree go elem
+    where
+      go :: MarkupF msg ~> MarkupF msg
+      go (ElementF rec x) = ElementF (rec { styles = snoc rec.styles st }) x
+      go x = x
+
+-- the other 2 instances are because `div ! cls "parent" $ div $ text "child"`
+-- will be a function MarkupT -> MarkupT for our operator
+
+instance hasAttributeMarkupF :: HasAttribute (Free (MarkupF msg) Unit -> Free (MarkupF msg) Unit) (VD.Property msg) where
+  withAttribute efn prop elem =
+    withAttribute (efn elem) prop
+
+instance hasStyleMarkupF :: HasStyle (Free (MarkupF msg) Unit -> Free (MarkupF msg) Unit) where
+  withStyle efn prop elem =
+    withStyle (efn elem) prop
+
+-- | Add an optional attribute (operator !?)
+withOptionalAttribute
+  :: forall h msg
+  .  HasAttribute h (VD.Property msg)
+  => h
+  -> Maybe (VD.Property msg)
+  -> h
+withOptionalAttribute elem Nothing =
+  elem
+withOptionalAttribute elem (Just prop) =
+  withAttribute elem prop
+
+-- ! Add an optional style (operator !?)
+withOptionalStyle
+  :: forall h
+  .  HasStyle h
+  => h
+  -> Maybe Style
+  -> h
+withOptionalStyle elem Nothing =
+  elem
+withOptionalStyle elem (Just st) =
+  withStyle elem st
+
+infixl 4 withAttribute as !
+infixl 4 withOptionalAttribute as !?
+infixl 4 withStyle as #!
+infixl 4 withOptionalStyle as #!?
+
+
+-- RENDERING
 
 
 -- | Render the content DSL to a VirtualDom node.
-render :: forall msg. ContentT msg -> VD.VNode msg
+render :: forall msg. MarkupT msg -> VD.VNode msg
 render elem =
 
   singleNode $ renderNodes elem
@@ -184,17 +221,17 @@ render elem =
         x ->
           VD.node "div" [] x
 
-    styles2Tups s = map (\(Style st) -> Tuple st.name st.value) s
+    styles2Tups s = map (\st -> Tuple st.name st.value) s
 
     renderNodes content =
-      execState (foldFree foldContentF content) []
+      execState (foldFree foldMarkupF content) []
 
-    foldContentF :: ContentF msg ~> State (Array (VD.VNode msg))
-    foldContentF (EmptyF x) =
+    foldMarkupF :: MarkupF msg ~> State (Array (VD.VNode msg))
+    foldMarkupF (EmptyF x) =
       pure x
-    foldContentF (VNodeF vnode x) =
-      state \acc -> Tuple x (snoc acc vnode)
-    foldContentF (ContentF rec x) =
+    foldMarkupF (VNodeF vn x) =
+      state \acc -> Tuple x (snoc acc vn)
+    foldMarkupF (ElementF rec x) =
       let
         c = renderNodes rec.content
         a = if null rec.styles

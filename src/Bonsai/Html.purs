@@ -7,7 +7,7 @@ where
 
 import Prelude hiding (div)
 
-import Bonsai.Html.Internal (ContentT, element, emptyElement)
+import Bonsai.Html.Internal (MarkupT, leaf, parent)
 
 
 
@@ -17,123 +17,123 @@ import Bonsai.Html.Internal (ContentT, element, emptyElement)
 
 
 
-body :: ContentT ~> ContentT
+body :: MarkupT ~> MarkupT
 body =
-  element "body"
+  parent "body"
 
-section :: ContentT ~> ContentT
+section :: MarkupT ~> MarkupT
 section =
-  element "section"
+  parent "section"
 
-nav :: ContentT ~> ContentT
+nav :: MarkupT ~> MarkupT
 nav =
-  element "nav"
+  parent "nav"
 
-article :: ContentT ~> ContentT
+article :: MarkupT ~> MarkupT
 article =
-  element "article"
+  parent "article"
 
-aside :: ContentT ~> ContentT
+aside :: MarkupT ~> MarkupT
 aside =
-  element "aside"
+  parent "aside"
 
-h1 :: ContentT ~> ContentT
+h1 :: MarkupT ~> MarkupT
 h1 =
-  element "h1"
+  parent "h1"
 
-h2 :: ContentT ~> ContentT
+h2 :: MarkupT ~> MarkupT
 h2 =
-  element "h2"
+  parent "h2"
 
-h3 :: ContentT ~> ContentT
+h3 :: MarkupT ~> MarkupT
 h3 =
-  element "h3"
+  parent "h3"
 
-h4 :: ContentT ~> ContentT
+h4 :: MarkupT ~> MarkupT
 h4 =
-  element "h4"
+  parent "h4"
 
-h5 :: ContentT ~> ContentT
+h5 :: MarkupT ~> MarkupT
 h5 =
-  element "h5"
+  parent "h5"
 
-h6 :: ContentT ~> ContentT
+h6 :: MarkupT ~> MarkupT
 h6 =
-  element "h6"
+  parent "h6"
 
-header :: ContentT ~> ContentT
+header :: MarkupT ~> MarkupT
 header =
-  element "header"
+  parent "header"
 
-footer :: ContentT ~> ContentT
+footer :: MarkupT ~> MarkupT
 footer =
-  element "footer"
+  parent "footer"
 
-address :: ContentT ~> ContentT
+address :: MarkupT ~> MarkupT
 address =
-  element "address"
+  parent "address"
 
-main_ :: ContentT ~> ContentT
+main_ :: MarkupT ~> MarkupT
 main_ =
-  element "main_"
+  parent "main_"
 
-p :: ContentT ~> ContentT
+p :: MarkupT ~> MarkupT
 p =
-  element "p"
+  parent "p"
 
-hr :: forall msg. ContentT msg
+hr :: forall msg. MarkupT msg
 hr =
-  emptyElement "hr"
+  leaf "hr"
 
-pre_ :: ContentT ~> ContentT
+pre_ :: MarkupT ~> MarkupT
 pre_ =
-  element "pre"
+  parent "pre"
 
-blockquote :: ContentT ~> ContentT
+blockquote :: MarkupT ~> MarkupT
 blockquote =
-  element "blockquote"
+  parent "blockquote"
 
-ol :: ContentT ~> ContentT
+ol :: MarkupT ~> MarkupT
 ol =
-  element "ol"
+  parent "ol"
 
-ul :: ContentT ~> ContentT
+ul :: MarkupT ~> MarkupT
 ul =
-  element "ul"
+  parent "ul"
 
-li :: ContentT ~> ContentT
+li :: MarkupT ~> MarkupT
 li =
-  element "li"
+  parent "li"
 
-dl :: ContentT ~> ContentT
+dl :: MarkupT ~> MarkupT
 dl =
-  element "dl"
+  parent "dl"
 
-dt :: ContentT ~> ContentT
+dt :: MarkupT ~> MarkupT
 dt =
-  element "dt"
+  parent "dt"
 
-dd :: ContentT ~> ContentT
+dd :: MarkupT ~> MarkupT
 dd =
-  element "dd"
+  parent "dd"
 
-figure :: ContentT ~> ContentT
+figure :: MarkupT ~> MarkupT
 figure =
-  element "figure"
+  parent "figure"
 
-figcaption :: ContentT ~> ContentT
+figcaption :: MarkupT ~> MarkupT
 figcaption =
-  element "figcaption"
+  parent "figcaption"
 
 -- | Create a div element.
-div_ :: ContentT ~> ContentT
+div_ :: MarkupT ~> MarkupT
 div_ =
-  element "div"
+  parent "div"
 
 -- | Create a div element.
 -- | This clashes with a function from the prelude,
 -- | so either use div_ or "import Prelude hiding (div)"
-div :: ContentT ~> ContentT
+div :: MarkupT ~> MarkupT
 div = div_
 
 
@@ -143,117 +143,117 @@ div = div_
 
 
 
-a :: ContentT ~> ContentT
+a :: MarkupT ~> MarkupT
 a =
-  element "a"
+  parent "a"
 
-em :: ContentT ~> ContentT
+em :: MarkupT ~> MarkupT
 em =
-  element "em"
+  parent "em"
 
-strong :: ContentT ~> ContentT
+strong :: MarkupT ~> MarkupT
 strong =
-  element "strong"
+  parent "strong"
 
-small :: ContentT ~> ContentT
+small :: MarkupT ~> MarkupT
 small =
-  element "small"
+  parent "small"
 
-s :: ContentT ~> ContentT
+s :: MarkupT ~> MarkupT
 s =
-  element "s"
+  parent "s"
 
-cite :: ContentT ~> ContentT
+cite :: MarkupT ~> MarkupT
 cite =
-  element "cite"
+  parent "cite"
 
-q :: ContentT ~> ContentT
+q :: MarkupT ~> MarkupT
 q =
-  element "q"
+  parent "q"
 
-dfn :: ContentT ~> ContentT
+dfn :: MarkupT ~> MarkupT
 dfn =
-  element "dfn"
+  parent "dfn"
 
-abbr :: ContentT ~> ContentT
+abbr :: MarkupT ~> MarkupT
 abbr =
-  element "abbr"
+  parent "abbr"
 
-time :: ContentT ~> ContentT
+time :: MarkupT ~> MarkupT
 time =
-  element "time"
+  parent "time"
 
-code :: ContentT ~> ContentT
+code :: MarkupT ~> MarkupT
 code =
-  element "code"
+  parent "code"
 
-var :: ContentT ~> ContentT
+var :: MarkupT ~> MarkupT
 var =
-  element "var"
+  parent "var"
 
-samp :: ContentT ~> ContentT
+samp :: MarkupT ~> MarkupT
 samp =
-  element "samp"
+  parent "samp"
 
-kbd :: ContentT ~> ContentT
+kbd :: MarkupT ~> MarkupT
 kbd =
-  element "kbd"
+  parent "kbd"
 
-sub :: ContentT ~> ContentT
+sub :: MarkupT ~> MarkupT
 sub =
-  element "sub"
+  parent "sub"
 
-sup :: ContentT ~> ContentT
+sup :: MarkupT ~> MarkupT
 sup =
-  element "sup"
+  parent "sup"
 
-i :: ContentT ~> ContentT
+i :: MarkupT ~> MarkupT
 i =
-  element "i"
+  parent "i"
 
-b :: ContentT ~> ContentT
+b :: MarkupT ~> MarkupT
 b =
-  element "b"
+  parent "b"
 
-u :: ContentT ~> ContentT
+u :: MarkupT ~> MarkupT
 u =
-  element "u"
+  parent "u"
 
-mark :: ContentT ~> ContentT
+mark :: MarkupT ~> MarkupT
 mark =
-  element "mark"
+  parent "mark"
 
-ruby :: ContentT ~> ContentT
+ruby :: MarkupT ~> MarkupT
 ruby =
-  element "ruby"
+  parent "ruby"
 
-rt :: ContentT ~> ContentT
+rt :: MarkupT ~> MarkupT
 rt =
-  element "rt"
+  parent "rt"
 
-rp :: ContentT ~> ContentT
+rp :: MarkupT ~> MarkupT
 rp =
-  element "rp"
+  parent "rp"
 
-bdi :: ContentT ~> ContentT
+bdi :: MarkupT ~> MarkupT
 bdi =
-  element "bdi"
+  parent "bdi"
 
-bdo :: ContentT ~> ContentT
+bdo :: MarkupT ~> MarkupT
 bdo =
-  element "bdo"
+  parent "bdo"
 
-span :: ContentT ~> ContentT
+span :: MarkupT ~> MarkupT
 span =
-  element "span"
+  parent "span"
 
-br :: forall msg. ContentT msg
+br :: forall msg. MarkupT msg
 br =
-  emptyElement "br"
+  leaf "br"
 
-wbr :: ContentT ~> ContentT
+wbr :: MarkupT ~> MarkupT
 wbr =
-  element "wbr"
+  parent "wbr"
 
 
 
@@ -265,13 +265,13 @@ wbr =
 
 
 
-ins :: ContentT ~> ContentT
+ins :: MarkupT ~> MarkupT
 ins =
-  element "ins"
+  parent "ins"
 
-del :: ContentT ~> ContentT
+del :: MarkupT ~> MarkupT
 del =
-  element "del"
+  parent "del"
 
 
 
@@ -280,164 +280,164 @@ del =
 
 
 
-img :: ContentT ~> ContentT
+img :: MarkupT ~> MarkupT
 img =
-  element "img"
+  parent "img"
 
-iframe :: ContentT ~> ContentT
+iframe :: MarkupT ~> MarkupT
 iframe =
-  element "iframe"
+  parent "iframe"
 
-embed :: ContentT ~> ContentT
+embed :: MarkupT ~> MarkupT
 embed =
-  element "embed"
+  parent "embed"
 
-object :: ContentT ~> ContentT
+object :: MarkupT ~> MarkupT
 object =
-  element "object"
+  parent "object"
 
-param :: ContentT ~> ContentT
+param :: MarkupT ~> MarkupT
 param =
-  element "param"
+  parent "param"
 
-video :: ContentT ~> ContentT
+video :: MarkupT ~> MarkupT
 video =
-  element "video"
+  parent "video"
 
-audio :: ContentT ~> ContentT
+audio :: MarkupT ~> MarkupT
 audio =
-  element "audio"
+  parent "audio"
 
-source :: ContentT ~> ContentT
+source :: MarkupT ~> MarkupT
 source =
-  element "source"
+  parent "source"
 
 
-track :: ContentT ~> ContentT
+track :: MarkupT ~> MarkupT
 track =
-  element "track"
+  parent "track"
 
-canvas :: ContentT ~> ContentT
+canvas :: MarkupT ~> MarkupT
 canvas =
-  element "canvas"
+  parent "canvas"
 
-math :: ContentT ~> ContentT
+math :: MarkupT ~> MarkupT
 math =
-  element "math"
+  parent "math"
 
-table :: ContentT ~> ContentT
+table :: MarkupT ~> MarkupT
 table =
-  element "table"
+  parent "table"
 
-caption :: ContentT ~> ContentT
+caption :: MarkupT ~> MarkupT
 caption =
-  element "caption"
+  parent "caption"
 
-colgroup :: ContentT ~> ContentT
+colgroup :: MarkupT ~> MarkupT
 colgroup =
-  element "colgroup"
+  parent "colgroup"
 
-col :: ContentT ~> ContentT
+col :: MarkupT ~> MarkupT
 col =
-  element "col"
+  parent "col"
 
-tbody :: ContentT ~> ContentT
+tbody :: MarkupT ~> MarkupT
 tbody =
-  element "tbody"
+  parent "tbody"
 
-thead :: ContentT ~> ContentT
+thead :: MarkupT ~> MarkupT
 thead =
-  element "thead"
+  parent "thead"
 
-tfoot :: ContentT ~> ContentT
+tfoot :: MarkupT ~> MarkupT
 tfoot =
-  element "tfoot"
+  parent "tfoot"
 
-tr :: ContentT ~> ContentT
+tr :: MarkupT ~> MarkupT
 tr =
-  element "tr"
+  parent "tr"
 
-td :: ContentT ~> ContentT
+td :: MarkupT ~> MarkupT
 td =
-  element "td"
+  parent "td"
 
-th :: ContentT ~> ContentT
+th :: MarkupT ~> MarkupT
 th =
-  element "th"
+  parent "th"
 
-form :: ContentT ~> ContentT
+form :: MarkupT ~> MarkupT
 form =
-  element "form"
+  parent "form"
 
-fieldset :: ContentT ~> ContentT
+fieldset :: MarkupT ~> MarkupT
 fieldset =
-  element "fieldset"
+  parent "fieldset"
 
-legend :: ContentT ~> ContentT
+legend :: MarkupT ~> MarkupT
 legend =
-  element "legend"
+  parent "legend"
 
-label :: ContentT ~> ContentT
+label :: MarkupT ~> MarkupT
 label =
-  element "label"
+  parent "label"
 
-input :: forall msg. ContentT msg
+input :: forall msg. MarkupT msg
 input =
-  emptyElement "input"
+  leaf "input"
 
-button :: ContentT ~> ContentT
+button :: MarkupT ~> MarkupT
 button =
-  element "button"
+  parent "button"
 
-select :: ContentT ~> ContentT
+select :: MarkupT ~> MarkupT
 select =
-  element "select"
+  parent "select"
 
-datalist :: ContentT ~> ContentT
+datalist :: MarkupT ~> MarkupT
 datalist =
-  element "datalist"
+  parent "datalist"
 
-optgroup :: ContentT ~> ContentT
+optgroup :: MarkupT ~> MarkupT
 optgroup =
-  element "optgroup"
+  parent "optgroup"
 
-option :: ContentT ~> ContentT
+option :: MarkupT ~> MarkupT
 option =
-  element "option"
+  parent "option"
 
 
-textarea :: ContentT ~> ContentT
+textarea :: forall msg. MarkupT msg
 textarea =
-  element "textarea"
+  leaf "textarea"
 
-keygen :: ContentT ~> ContentT
+keygen :: MarkupT ~> MarkupT
 keygen =
-  element "keygen"
+  parent "keygen"
 
-output :: ContentT ~> ContentT
+output :: MarkupT ~> MarkupT
 output =
-  element "output"
+  parent "output"
 
-progress :: ContentT ~> ContentT
+progress :: MarkupT ~> MarkupT
 progress =
-  element "progress"
+  parent "progress"
 
-meter :: ContentT ~> ContentT
+meter :: MarkupT ~> MarkupT
 meter =
-  element "meter"
+  parent "meter"
 
-details :: ContentT ~> ContentT
+details :: MarkupT ~> MarkupT
 details =
-  element "details"
+  parent "details"
 
-summary :: ContentT ~> ContentT
+summary :: MarkupT ~> MarkupT
 summary =
-  element "summary"
+  parent "summary"
 
-menuitem :: ContentT ~> ContentT
+menuitem :: MarkupT ~> MarkupT
 menuitem =
-  element "menuitem"
+  parent "menuitem"
 
-menu :: ContentT ~> ContentT
+menu :: MarkupT ~> MarkupT
 menu =
-  element "menu"
+  parent "menu"

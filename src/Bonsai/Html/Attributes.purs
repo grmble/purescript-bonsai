@@ -6,14 +6,14 @@ where
 
 import Prelude
 import Bonsai.VirtualDom as VD
-import Bonsai.Html.Internal (Style(..), attribute, booleanProperty, stringProperty)
+import Bonsai.Html.Internal (Style, attribute, booleanProperty, stringProperty)
 import Data.Array (intercalate, filter)
 import Data.Tuple (Tuple, snd, fst)
 
 -- | Create a style fragment for the Element DSL
 style :: String -> String -> Style
 style n v =
-  Style { name: n, value: v }
+  { name: n, value: v }
 
 -- | Sets space-separated class attributes for CSS
 classList :: forall msg. Array (Tuple String Boolean) -> VD.Property msg
