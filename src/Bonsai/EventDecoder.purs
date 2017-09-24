@@ -1,4 +1,4 @@
--- |  Event listener utilities
+-- |  Event decoder utilities
 -- |
 -- |  For maximum performance, event handlers attached to the
 -- |  virtual DOM should be comparable by object identity.
@@ -19,13 +19,8 @@
 -- |    myMsgDecoder = (f2cmd pureCommand <<< map f <<< targetValueEvent)
 -- |    onInputMyMsg = on "input" myMsgDecoder
 -- |
-module Bonsai.Event
+module Bonsai.EventDecoder
   ( module Bonsai.VirtualDom
-  , onInput
-  , onClick
-  , onKeyEnter
-  , onKeyEnterEscape
-  , preventDefaultStopPropagation
   , targetValueEvent
   , targetFormValuesEvent
   , targetValuesEvent
@@ -38,7 +33,7 @@ where
 
 import Prelude
 
-import Bonsai.Types (BrowserEvent, EventDecoder, f2cmd, emptyCommand, pureCommand)
+import Bonsai.Types (BrowserEvent, EventDecoder)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
 import Data.Array (catMaybes, range)
 import Data.Either (Either(..))
@@ -48,49 +43,6 @@ import Data.Maybe (Maybe(..))
 import Data.StrMap (StrMap, fromFoldable)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-
-
--- | Suboptimal helper for the input event.
-onInput :: forall msg. (String -> msg) -> Property msg
-onInput f =
-  on "input" (f2cmd pureCommand <<< map f <<< targetValueEvent)
-
--- | Event listener property for the click event.
-onClick :: forall msg. msg -> Property msg
-onClick msg =
-  on "click" \_ -> Right $ pureCommand msg
-
-
--- | Emit commands on enter key presses
-onKeyEnter :: forall msg. (String -> msg) -> Property msg
-onKeyEnter cmdFn =
-  on "keydown" (f2cmd convert <<< enterEscapeKeyEvent)
-  where
-    convert Nothing =
-      emptyCommand
-    convert (Just (Left _)) =
-      emptyCommand
-    convert (Just (Right s)) =
-      pureCommand $ cmdFn s
-
--- | Emit commands on enter or escape key presses
-onKeyEnterEscape :: forall msg. (String -> msg) -> (String -> msg) -> Property msg
-onKeyEnterEscape enterFn escFn =
-  on "keydown" (f2cmd convert <<< enterEscapeKeyEvent)
-  where
-    convert Nothing =
-      emptyCommand
-    convert (Just (Left s)) =
-      pureCommand $ escFn s
-    convert (Just (Right s)) =
-      pureCommand $ enterFn s
-
-
-preventDefaultStopPropagation :: Options
-preventDefaultStopPropagation =
-  { preventDefault: true
-  , stopPropagation: true
-  }
 
 -- | The simplest possible browser event - the foreign event itself
 identityEvent :: EventDecoder Foreign

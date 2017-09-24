@@ -33,7 +33,9 @@ Edit src/Main.purs
     import Prelude
 
     import Bonsai
-    import Bonsai.Event
+    import Bonsai.Html
+    import Bonsai.Html.Attributes
+    import Bonsai.Html.Events
     import Data.Maybe
     import DOM
     import DOM.Node.Types
@@ -55,16 +57,10 @@ Edit src/Main.purs
 
     view :: Model -> VNode Msg
     view model =
-      node "div" []
-        [ text $ show model
-        , node "button"
-            [ onClick Inc ]
-            [ text "+"]
-        , node "button"
-            [ onClick Dec ]
-            [ text "-" ]
-        ]
-
+      render $ div_ $ do
+        text $ show model
+        button ! onClick Inc $ text "+"
+        button ! onClick Dec $ text "-"
 
     main = unsafePartial $ do
       Just mainDiv  <- domElementById (ElementId "main")

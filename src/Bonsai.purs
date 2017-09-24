@@ -4,7 +4,6 @@
 module Bonsai
   ( module Bonsai.DOM
   , module Bonsai.Types
-  , module Bonsai.VirtualDom
   , module Bonsai.Core
   )
 where
@@ -12,6 +11,3 @@ where
 import Bonsai.Core (Program, UpdateResult, ProgramState, debugProgram, emitMessages, mapResult, plainResult, program)
 import Bonsai.DOM (domElementById)
 import Bonsai.Types (Cmd(..), EventDecoder, pureCommand, emptyCommand, simpleTask, readerTask)
-import Bonsai.VirtualDom (VNode, Property, Options, Patch
-  , node, text, property, attribute, attributeNS, style
-  , keyedNode)
