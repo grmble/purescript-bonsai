@@ -31,10 +31,12 @@ where
 
 
 import Prelude
+
 import Bonsai.VirtualDom as VD
 import Control.Monad.Free (Free, foldFree, hoistFree, liftF)
 import Control.Monad.State (State, execState, state)
-import Data.Array (snoc, null)
+import Data.Array (fromFoldable)
+import Data.CatList (CatList, empty, null, snoc)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 
@@ -74,8 +76,8 @@ booleanProperty =
 -- | Element record type alias
 type Element msg =
   { name :: String
-  , attribs :: Array (VD.Property msg)
-  , styles :: Array Style
+  , attribs :: CatList (VD.Property msg)
+  , styles :: CatList Style
   , content :: MarkupT msg
   }
 
@@ -110,7 +112,7 @@ emptyMarkup = liftF $ EmptyF unit
 -- | Create a leaf element - will not have children
 leaf :: forall msg. String -> MarkupT msg
 leaf name =
-  liftF $ ElementF { name, attribs: [], styles: [], content: emptyMarkup } unit
+  liftF $ ElementF { name, attribs: empty, styles: empty, content: emptyMarkup } unit
 
 -- | Create an element with children.
 parent
@@ -119,7 +121,7 @@ parent
   -> MarkupT msg
   -> MarkupT msg
 parent name content =
-  liftF $ ElementF { name, attribs: [], styles: [], content: content } unit
+  liftF $ ElementF { name, attribs: empty, styles: empty, content: content } unit
 
 -- | keyedElement renders to a VirtualDom keyedNode.
 -- | The DSL does not work here to give it attributes and/or styles
@@ -212,8 +214,9 @@ render elem =
 
   where
 
+    singleNode :: Array (VD.VNode msg) -> VD.VNode msg
     singleNode ns =
-      case ns of
+      case fromFoldable ns of
         [] ->
           VD.node "div" [] []
         [ n ] ->
@@ -223,10 +226,11 @@ render elem =
 
     styles2Tups s = map (\st -> Tuple st.name st.value) s
 
+    renderNodes :: MarkupT msg -> Array (VD.VNode msg)
     renderNodes content =
-      execState (foldFree foldMarkupF content) []
+      fromFoldable $ execState (foldFree foldMarkupF content) empty
 
-    foldMarkupF :: MarkupF msg ~> State (Array (VD.VNode msg))
+    foldMarkupF :: MarkupF msg ~> State (CatList (VD.VNode msg))
     foldMarkupF (EmptyF x) =
       pure x
     foldMarkupF (VNodeF vn x) =
@@ -236,6 +240,6 @@ render elem =
         c = renderNodes rec.content
         a = if null rec.styles
               then rec.attribs
-              else rec.attribs <> [ VD.style $ styles2Tups rec.styles ]
+              else snoc rec.attribs (VD.style $ fromFoldable $ styles2Tups rec.styles)
       in
-        state \acc -> Tuple x (snoc acc (VD.node rec.name a c))
+        state \acc -> Tuple x (snoc acc (VD.node rec.name (fromFoldable a) c))
