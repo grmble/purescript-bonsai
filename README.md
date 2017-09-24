@@ -3,9 +3,8 @@
 Functional web programming in Purescript.  Heavily inspired by Elm & using
 the Elm Virtual DOM.
 
-*DISCLAIMER*: Not ready for public consumption.  Things will change and
-break in major ways.  No support for HTML yet - you have to write
-out all your virtual DOM nodes by hand.
+*DISCLAIMER*: Not ready for public consumption.  Things are still changing
+in major ways.
 
 It does have:
 
@@ -15,6 +14,7 @@ It does have:
   Commands can be effectful (e.g. accessing local storage) or
   even asynchronous (e.g. an ajax request, or a delayed update to the
   page).
+* Smolder-style Html API that renders to the VirtualDom
 
 ## Getting started
 
