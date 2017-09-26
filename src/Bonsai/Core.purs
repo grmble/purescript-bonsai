@@ -178,7 +178,7 @@ queueCommand env cmd =
     TaskCmd task -> do
       let ctx = { emitter: emitTheTypeIsALie env }
       let aff = task ctx
-      _ <- runAff emitError (emitSuccess env) (unsafeCoerceAff aff)
+      _ <- runAff emitEither (unsafeCoerceAff aff)
       pure false
   where
     queueMs msgs = do
@@ -186,7 +186,10 @@ queueCommand env cmd =
       pure $ not $ null msgs
     emitTheTypeIsALie env2 msgs =
       unsafeCoerceEff $ emitSuccess env2 msgs
-
+    emitEither e =
+      case e of
+        Left err -> emitError err
+        Right msgs -> emitSuccess env msgs
 
 
 -- | Unsafe coerce the effects of a Cmd.
