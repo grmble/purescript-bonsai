@@ -18,7 +18,7 @@ import Prelude
 
 import Bonsai.EventDecoder (enterEscapeKeyEvent, targetValueEvent, targetValuesEvent)
 import Bonsai.Types (emptyCommand, f2cmd, pureCommand)
-import Bonsai.VirtualDom (Property, Options, on)
+import Bonsai.VirtualDom (Property, Options, on, onWithOptions)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.StrMap (StrMap)
@@ -69,4 +69,5 @@ onKeyEnterEscape enterFn escFn =
 -- | Emit a command on form submit.
 onSubmit :: forall msg. (StrMap String -> msg) -> Property msg
 onSubmit cmdFn =
-  on "submit" (f2cmd (pureCommand <<< cmdFn) <<< targetValuesEvent)
+  onWithOptions "submit" preventDefaultStopPropagation
+    (f2cmd (pureCommand <<< cmdFn) <<< targetValuesEvent)
