@@ -4,13 +4,14 @@ where
 
 import Prelude
 
-import Bonsai.EventDecoder (targetFormValuesEvent, targetValueEvent, targetValuesEvent)
+import Bonsai.EventDecoder (enterEscapeKeyEvent, keyCodeEvent, targetFormValuesEvent, targetValueEvent, targetValuesEvent)
 import Bonsai.Types (EventDecoder)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Free (Free)
 import Data.Either (Either(..), isLeft)
 import Data.Foreign (Foreign, toForeign)
+import Data.Maybe (Maybe(..))
 import Data.StrMap (fromFoldable)
 import Data.Tuple (Tuple(..))
 import Test.Unit (TestF, suite, test)
@@ -30,6 +31,15 @@ tests = suite "Bonsai.EventDecoder" do
     assertEqual (fromFoldable [Tuple "key" "asdf"]) targetFormValuesEvent $ toForeign { target: { form: [ { name:"key", value:"asdf"} ] } }
     assertEqual (fromFoldable []) targetFormValuesEvent $ toForeign { target: {form: [{nameX:"key", value:"asdf"}] } }
     assertEqual (fromFoldable []) targetFormValuesEvent $ toForeign { target: {form: [{name:"key", valueX:"asdf"}] } }
+  test "keyCodeEvent" do
+    assertEqual 13 keyCodeEvent $ toForeign { keyCode: 13 }
+    assertLeft "no keycode" keyCodeEvent $ toForeign { keyCodeX: 13 }
+  test "enterEscapeKeyEvent" do
+    assertEqual (Just (Right "asdf")) enterEscapeKeyEvent $ toForeign { target: { value: "asdf" }, keyCode: 13 }
+    assertEqual (Just (Left "asdf")) enterEscapeKeyEvent $ toForeign { target: { value: "asdf" }, keyCode: 27 }
+    assertEqual (Nothing) enterEscapeKeyEvent $ toForeign { target: { value: "asdf" }, keyCode: 66 }
+    assertLeft "no keycode" enterEscapeKeyEvent $ toForeign { target: { value: "asdf" }, keyCodeX: 13 }
+    assertLeft "no value" enterEscapeKeyEvent $ toForeign { target: { valueX: "asdf" }, keyCode: 13 }
 
 
 assertLeft :: forall msg eff. String -> EventDecoder msg -> Foreign -> Aff eff Unit
