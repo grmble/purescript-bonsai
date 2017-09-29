@@ -16,6 +16,12 @@ It does have:
   page).
 * Smolder-style Html API that renders to the VirtualDom
 
+## Documentation and examples
+
+* A tutorial with simple examples is at http://purescript-bonsai-docs.readthedocs.io/en/latest/
+* Reference documentation https://pursuit.purescript.org/packages/purescript-bonsai/
+* An example application is at https://github.com/grmble/purescript-bonsai-todo
+
 ## Getting started
 
 Start a fresh project
@@ -84,8 +90,3 @@ Add a index.html in your project root
 Start pulp in server mode
 
     pulp server
-
-
-## Other examples
-
-A more involved example is at https://github.com/grmble/purescript-bonsai-todo

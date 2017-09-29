@@ -1,7 +1,7 @@
 {
   "name": "purescript-bonsai",
   "homepage": "https://github.com/grmble/purescript-bonsai",
-  "description": "Mini-Elm in purescript",
+  "description": "Functional web programming in purescript",
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
