@@ -47,18 +47,6 @@ instance functorVNode :: Functor VNode where
 -- | Create a DOM node with a tag name, a list of HTML properties that can
 -- | include styles and event listeners, a list of CSS properties like `color`, and
 -- | a list of child nodes.
--- |
--- |    import Json.Encode as Json
--- |
--- |    hello : Node msg
--- |    hello =
--- |      node "div" [] [ text "Hello!" ]
--- |
--- |    greeting : Node msg
--- |    greeting =
--- |      node "div"
--- |        [ property "id" (Json.string "greeting") ]
--- |        [ text "Hello!" ]
 node :: forall msg. String -> Array (Property msg) -> Array (VNode msg) -> VNode msg
 node =
   runFn3 nodeFn3
@@ -79,23 +67,6 @@ foreign import text :: forall msg. String -> VNode msg
 -- | Say you have a node named `button` that produces `()` values when it is
 -- | clicked. To get your model updating properly, you will probably want to tag
 -- | this `()` value like this:
--- |
--- |     type Msg = Click | ...
--- |
--- |     update msg model =
--- |       case msg of
--- |         Click ->
--- |           ...
--- |
--- |     view model =
--- |       map (\_ -> Click) button
--- |
--- | So now all the events produced by `button` will be transformed to be of type
--- | `Msg` so they can be handled by your update function!
--- |
--- | map : (a -> msg) -> VNode a -> Node msg
--- | map =
--- |   Native.VirtualDom.map
 mapNode :: forall a msg. (a -> msg) -> VNode a-> VNode msg
 mapNode =
   runFn2 mapFn2
@@ -148,12 +119,6 @@ foreign import propertyFn2
 -- | Create arbitrary HTML *attributes*. Maps onto JavaScript’s `setAttribute`
 -- | function under the hood.
 -- |
--- |     greeting : Html
--- |     greeting =
--- |         node "div" [ attribute "class" "greeting" ] [
--- |           text "Hello!"
--- |         ]
--- |
 -- | Notice that you must give the *attribute* name, so we use `class` as it would
 -- | be in HTML, not `className` as it would appear in JS.
 attribute :: forall msg. String -> String -> Property msg
@@ -174,18 +139,6 @@ foreign import attributeFn3 :: forall msg. Fn3 String String String (Property ms
 
 
 -- | Specify a list of styles.
--- |
--- |     myStyle : Property msg
--- |     myStyle =
--- |       style
--- |         [ ("backgroundColor", "red")
--- |         , ("height", "90px")
--- |         , ("width", "100%")
--- |         ]
--- |
--- |     greeting : Node msg
--- |     greeting =
--- |       node "div" [ myStyle ] [ text "Hello!" ]
 foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 
 
@@ -199,17 +152,6 @@ cmdDecoderMap fn decoder =
 
 
 -- | Create a custom event listener.
--- |
--- |     import Json.Decode as Json
--- |
--- |     onClick : msg -> Property msg
--- |     onClick msg =
--- |       on "click" (Json.succeed msg)
--- |
--- | You first specify the name of the event in the same format as with JavaScript’s
--- | `addEventListener`. Next you give a JSON decoder, which lets you pull
--- | information out of the event object. If the decoder succeeds, it will produce
--- | a message and route it to your `update` function.
 on :: forall eff msg. String -> (CmdDecoder eff msg) -> Property msg
 on eventName decoder =
   runFn3 onFn3 eventName defaultOptions decoder
