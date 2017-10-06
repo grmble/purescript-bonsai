@@ -13,7 +13,7 @@ where
 
 import Prelude
 
-import Bonsai.DOM (domRequestAnimationFrame)
+import Bonsai.DOM (domClearElement, domRequestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
 import Bonsai.Types (Cmd(..), Emitter, TaskContext, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
@@ -125,6 +125,7 @@ debugProgram container dbgTiming dbgEvents updater renderer model = do
 
   ts <- startTiming
   let dnode = render (emitter env) vnode
+  domClearElement container
   _ <- appendChild (elementToNode dnode) (elementToNode container)
   debugTiming env.dbgTiming "render/appendChild" ts
 
