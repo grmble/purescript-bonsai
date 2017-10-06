@@ -7,6 +7,7 @@ module Bonsai.Core
   , mapResult
   , plainResult
   , program
+  , taskContext
   )
 where
 
@@ -176,7 +177,7 @@ queueCommand env cmd =
     Cmd ms ->
       queueMs ms
     TaskCmd task -> do
-      let ctx = { emitter: emitTheTypeIsALie env }
+      let ctx = taskContext env
       let aff = task ctx
       _ <- runAff emitEither (unsafeCoerceAff aff)
       pure false
@@ -184,8 +185,6 @@ queueCommand env cmd =
     queueMs msgs = do
       queueMessages env msgs
       pure $ not $ null msgs
-    emitTheTypeIsALie env2 msgs =
-      unsafeCoerceEff $ emitSuccess env2 msgs
     emitEither e =
       case e of
         Left err -> emitError err
@@ -195,6 +194,21 @@ queueCommand env cmd =
 -- | Unsafe coerce the effects of a Cmd.
 unsafeCoerceCmd :: forall eff1 eff2 msg. Cmd eff1 msg -> Cmd eff2 msg
 unsafeCoerceCmd cmd = unsafeCoerce cmd
+
+
+-- | Obtain a task context for a bonsai program.
+-- |
+-- | The task context can be used with emitMessages
+taskContext
+  :: forall eff model msg
+  .  Program eff model msg
+  -> TaskContext eff (Array msg)
+taskContext env =
+  { emitter: emitTheTypeIsALie }
+  where
+    emitTheTypeIsALie msgs =
+        unsafeCoerceEff $ emitSuccess env msgs
+
 
 
 -- | Cmd emitter for the VirtualDom
