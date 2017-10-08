@@ -120,14 +120,14 @@ function lazy(fn, a)
 function lazy2(fn, a, b)
 {
 	return thunk(fn, [a,b], function() {
-		return A2(fn, a, b);
+		return fn(a)(b);
 	});
 }
 
 function lazy3(fn, a, b, c)
 {
 	return thunk(fn, [a,b,c], function() {
-		return A3(fn, a, b, c);
+		return fn(a)(b)(c);
 	});
 }
 
