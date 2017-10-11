@@ -4,16 +4,18 @@ module Bonsai.Core
   , ProgramState
   , debugProgram
   , emitMessages
+  , emittingTask
   , mapResult
   , plainResult
   , program
+  , simpleTask
   , taskContext
   )
 where
 
 import Prelude
 
-import Bonsai.DOM (domClearElement, domRequestAnimationFrame)
+import Bonsai.DOM.Internal (domClearElement, domRequestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
 import Bonsai.Types (Cmd(..), Emitter, TaskContext, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
@@ -179,8 +181,7 @@ queueCommand env cmd =
       queueMs ms
     TaskCmd task -> do
       let ctx = taskContext env
-      let aff = task ctx
-      _ <- runAff emitEither (unsafeCoerceAff aff)
+      _ <- runAff emitEither $ unsafeCoerceAff $ task ctx
       pure false
   where
     queueMs msgs = do
@@ -189,7 +190,7 @@ queueCommand env cmd =
     emitEither e =
       case e of
         Left err -> emitError err
-        Right msgs -> emitSuccess env msgs
+        Right _ -> pure unit
 
 
 -- | Unsafe coerce the effects of a Cmd.
@@ -243,6 +244,22 @@ updateAndRedraw env = do
   updateModel env
   _ <- domRequestAnimationFrame (redrawModel env)
   pure unit
+
+-- | Produces a simple task (not cancellable, ony emits the return values
+simpleTask :: forall aff msg. Aff aff (Array msg) -> Cmd aff msg
+simpleTask aff =
+  TaskCmd $ \ctx -> do
+    ms <- aff
+    emitMessages ctx ms
+
+-- | Procudes a task that can emit multiple times
+emittingTask
+  :: forall aff msg
+  .  (TaskContext aff (Array msg) -> Aff aff Unit)
+  -> Cmd aff msg
+emittingTask = TaskCmd
+
+
 
 -- | Update from queued messages
 -- |

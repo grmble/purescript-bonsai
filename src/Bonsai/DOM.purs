@@ -1,8 +1,7 @@
 -- | Bonsai DOM Helpers
 module Bonsai.DOM
-  ( domClearElement
+  ( module Bonsai.DOM.Internal
   , domElementById
-  , domRequestAnimationFrame
   , affElementById
   , affElementAction
   , focusCmd
@@ -12,7 +11,9 @@ where
 
 import Prelude
 
-import Bonsai.Types (Cmd, simpleTask)
+import Bonsai.Core (simpleTask)
+import Bonsai.DOM.Internal (domClearElement, domRequestAnimationFrame)
+import Bonsai.Types (Cmd)
 import Control.Monad.Aff (Aff, delay)
 import Control.Monad.Eff (Eff, whileE)
 import Control.Monad.Eff.Class (liftEff)
@@ -38,16 +39,6 @@ domElementById id =
   window >>=
   document >>=
   htmlDocumentToDocument >>> documentToNonElementParentNode >>> getElementById id
-
--- | Request animation frame
-domRequestAnimationFrame
-  :: forall eff
-  .  Eff (dom::DOM|eff) Unit
-  -> Eff (dom::DOM|eff) RequestAnimationFrameId
-domRequestAnimationFrame eff = do
-  w <- window
-  requestAnimationFrame eff w
-
 
 -- | Cmd that will set the focus to the input field.
 focusCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
@@ -93,17 +84,3 @@ affElementById id@(ElementId idStr) = do
       throwError $ error ("no element with id " <> idStr)
     Just e ->
       pure e
-
--- | Clear a DOM element.
--- |
--- | Removes all child nodes.
-domClearElement :: forall eff. Element -> Eff (dom::DOM|eff) Unit
-domClearElement e =
-  unsafePartial $
-    whileE
-      (hasChildNodes n)
-      (do
-        c <- fromJust <$> firstChild n
-        removeChild c n)
-  where
-    n = elementToNode e

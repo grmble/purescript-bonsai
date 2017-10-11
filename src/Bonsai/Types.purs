@@ -10,8 +10,6 @@ module Bonsai.Types
   , f2cmd
   , emptyCommand
   , pureCommand
-  , simpleTask
-  , readerTask
   )
 where
 
@@ -48,7 +46,7 @@ import Data.Foreign (F, Foreign, renderForeignError)
 -- | inside a TaskCmd.
 data Cmd eff msg
   = Cmd (Array msg)
-  | TaskCmd ((TaskContext eff (Array msg)) -> (Aff eff (Array msg)))
+  | TaskCmd ((TaskContext eff (Array msg)) -> (Aff eff Unit))
 
 -- Cmd is a functor so VNodes/Events can be mapped
 instance cmdFunctor :: Functor (Cmd eff) where
@@ -60,8 +58,8 @@ instance cmdFunctor :: Functor (Cmd eff) where
 mapTask
   :: forall eff a b
   .  (a -> b)
-  -> (TaskContext eff (Array a) -> Aff eff (Array a))
-  -> (TaskContext eff (Array b) -> Aff eff (Array b))
+  -> (TaskContext eff (Array a) -> Aff eff Unit)
+  -> (TaskContext eff (Array b) -> Aff eff Unit)
 mapTask f ta contextB =
   let
     emitA :: Array a -> Eff eff Unit
@@ -71,7 +69,7 @@ mapTask f ta contextB =
     contextA =
       contextB { emitter = emitA }
   in
-    map (map f) $ ta contextA
+    ta contextA
 
 -- | The Task Context holds the emitter function for the task
 -- |
@@ -131,15 +129,3 @@ emptyCommand = Cmd []
 -- | Produces a pure command
 pureCommand :: forall aff msg. msg -> Cmd aff msg
 pureCommand msg = Cmd [msg]
-
-
--- | Produces a simple task (not cancellable, ony emits the return values
-simpleTask :: forall aff msg. Aff aff (Array msg) -> Cmd aff msg
-simpleTask aff = TaskCmd $ \_ -> aff
-
--- | Procudes a task that can emit multiple times
-readerTask
-  :: forall aff msg
-  .  (TaskContext aff (Array msg) -> Aff aff (Array msg))
-  -> Cmd aff msg
-readerTask = TaskCmd
