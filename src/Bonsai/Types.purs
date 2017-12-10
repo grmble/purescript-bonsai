@@ -15,8 +15,9 @@ where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
-import Control.Monad.Eff (Eff)
+import Control.Monad.Aff (Aff, Fiber)
+import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Exception (Error, error)
 import Control.Monad.Except (runExcept)
 import Data.Array (intercalate)
@@ -78,6 +79,7 @@ mapTask f ta contextB =
 -- | as well.  Maybe not a good idea.
 type TaskContext eff msg =
   { emitter :: msg -> Eff eff Unit
+  , fiber :: AVar (Fiber eff Unit)
   }
 
 -- | A BrowserEvent is simply a decoded foreign

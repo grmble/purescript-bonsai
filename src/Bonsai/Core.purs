@@ -19,7 +19,8 @@ import Bonsai.DOM.Internal (domClearElement, domRequestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
 import Bonsai.Types (Cmd(..), Emitter, TaskContext, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
-import Control.Monad.Aff (Aff, runAff)
+import Control.Monad.Aff (Aff, joinFiber, runAff_, suspendAff)
+import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -101,7 +102,7 @@ program
   -> (model -> msg -> UpdateResult aff model msg)
   -> (model -> VNode msg)
   -> model
-  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) (Program aff model msg)
+  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) (Program aff model msg)
 program container updater renderer model =
   debugProgram container false false updater renderer model
 
@@ -114,7 +115,7 @@ debugProgram
   -> (model -> msg -> UpdateResult aff model msg)
   -> (model -> VNode msg)
   -> model
-  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) (Program aff model msg)
+  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) (Program aff model msg)
 debugProgram container dbgTiming dbgEvents updater renderer model = do
   -- use a fake ProgramState so we have a ProgramEnv to render with
   -- (needed for the emitters)
@@ -140,7 +141,7 @@ queueMessages
   :: forall eff model msg
   .  Program eff model msg
   -> Array msg
-  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 queueMessages env msgs =
   if null msgs
     then pure unit
@@ -150,7 +151,7 @@ queueMessages env msgs =
       pure unit
 
 -- | Error callback for the Aff commands
-emitError :: forall eff. Error -> Eff (console::CONSOLE|eff) Unit
+emitError :: forall eff. Error -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 emitError err =
   logJsonObj "cmd error: " err
 
@@ -162,7 +163,7 @@ emitSuccess
   :: forall eff model msg
   .  Program eff model msg
   -> Array msg
-  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 emitSuccess env msgs = do
     queueMessages env msgs
     if null msgs
@@ -174,16 +175,20 @@ queueCommand
   :: forall eff model msg
   .  Program eff model msg
   -> Cmd eff msg
-  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
+  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
 queueCommand env cmd =
   case cmd of
-    Cmd ms ->
-      queueMs ms
+    Cmd ms -> do
+      unsafeCoerceEff $ queueMs ms
     TaskCmd task -> do
-      let ctx = taskContext env
-      _ <- runAff emitEither $ unsafeCoerceAff $ task ctx
+      runAff_ emitEither (taskAff task)
       pure false
   where
+    taskAff task = do
+      ctx <- taskContext env
+      fib <- unsafeCoerceAff $ suspendAff (unsafeCoerceAff $ task ctx)
+      unsafeCoerceAff $ putVar fib ctx.fiber
+      unsafeCoerceAff $ joinFiber fib
     queueMs msgs = do
       queueMessages env msgs
       pure $ not $ null msgs
@@ -204,9 +209,13 @@ unsafeCoerceCmd cmd = unsafeCoerce cmd
 taskContext
   :: forall eff model msg
   .  Program eff model msg
-  -> TaskContext eff (Array msg)
-taskContext env =
-  { emitter: emitTheTypeIsALie }
+  -> Aff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) (TaskContext eff (Array msg))
+taskContext env = do
+  avar <- makeEmptyVar
+  pure
+    { emitter: emitTheTypeIsALie
+      , fiber: avar
+    }
   where
     emitTheTypeIsALie msgs =
         unsafeCoerceEff $ emitSuccess env msgs
@@ -219,7 +228,7 @@ taskContext env =
 emitter
   :: forall eff model msg
   .  Program eff model msg
-  -> Emitter (console::CONSOLE,dom::DOM,ref::REF|eff) msg
+  -> Emitter (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) msg
 emitter env ecmd =
   case ecmd of
     Left err ->
@@ -239,10 +248,10 @@ emitMessages ctx msgs =
 updateAndRedraw
   :: forall eff model msg
   .  Program eff model msg
-  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 updateAndRedraw env = do
   updateModel env
-  _ <- domRequestAnimationFrame (redrawModel env)
+  _ <- unsafeCoerceEff $ domRequestAnimationFrame (redrawModel env)
   pure unit
 
 -- | Produces a simple task (not cancellable, ony emits the return values
@@ -268,7 +277,7 @@ emittingTask = TaskCmd
 updateModel
   :: forall eff model msg
   .  Program eff model msg
-  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
 updateModel env = do
   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
 
