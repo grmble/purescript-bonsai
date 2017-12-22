@@ -3,13 +3,13 @@ module Bonsai.Core
   , UpdateResult
   , ProgramState
   , debugProgram
-  , emitMessages
   , emittingTask
+  , emitMessage
+  , issueCommand
   , mapResult
   , plainResult
   , program
   , simpleTask
-  , taskContext
   )
 where
 
@@ -170,7 +170,9 @@ emitSuccess env msgs = do
       then pure unit
       else updateAndRedraw env
 
--- | Queue a command, inform if any messages need processing
+-- | Queue a commands messages (or start tasks).
+-- |
+-- | Will return true if a redraw is necessary
 queueCommand
   :: forall eff model msg
   .  Program eff model msg
@@ -197,19 +199,34 @@ queueCommand env cmd =
         Left err -> emitError err
         Right _ -> pure unit
 
+-- | Issue a command.
+-- |
+-- | For pure commands, this will send the messages and request a redraw.
+-- | For (asynchronous) task commands, the task will be started.
+-- |
+-- | This can be used to start tasks, e.g. to initialize the model
+issueCommand
+  :: forall bff eff model msg
+  .  Program bff model msg
+  -> Cmd bff msg
+  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+issueCommand env cmd = unsafeCoerceEff $ do
+  mustUpdate <- queueCommand env cmd
+  if mustUpdate
+    then updateAndRedraw env
+    else pure unit
 
 -- | Unsafe coerce the effects of a Cmd.
 unsafeCoerceCmd :: forall eff1 eff2 msg. Cmd eff1 msg -> Cmd eff2 msg
 unsafeCoerceCmd cmd = unsafeCoerce cmd
 
-
 -- | Obtain a task context for a bonsai program.
 -- |
--- | The task context can be used with emitMessages
+-- | The task context can be used with emitMessage
 taskContext
   :: forall eff model msg
   .  Program eff model msg
-  -> Aff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) (TaskContext eff (Array msg))
+  -> Aff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) (TaskContext eff msg)
 taskContext env = do
   avar <- makeEmptyVar
   pure
@@ -217,9 +234,8 @@ taskContext env = do
       , fiber: avar
     }
   where
-    emitTheTypeIsALie msgs =
-        unsafeCoerceEff $ emitSuccess env msgs
-
+    emitTheTypeIsALie msg =
+        unsafeCoerceEff $ emitSuccess env [ msg ]
 
 
 -- | Cmd emitter for the VirtualDom
@@ -240,9 +256,11 @@ emitter env ecmd =
         else pure false
 
 -- | Emit helper for Tasks.
-emitMessages :: forall aff msg. TaskContext aff (Array msg) -> Array msg -> Aff aff Unit
-emitMessages ctx msgs =
-  unsafeCoerceAff $ liftEff $ ctx.emitter msgs
+-- |
+-- | In an emitting task, use this function to emit messages.
+emitMessage :: forall aff msg. TaskContext aff msg -> msg -> Aff aff Unit
+emitMessage ctx msg =
+  unsafeCoerceAff $ liftEff $ ctx.emitter msg
 
 -- | Update the model from queued messages, then redraw
 updateAndRedraw
@@ -255,16 +273,15 @@ updateAndRedraw env = do
   pure unit
 
 -- | Produces a simple task (not cancellable, ony emits the return values
-simpleTask :: forall aff msg. Aff aff (Array msg) -> Cmd aff msg
+simpleTask :: forall aff msg. Aff aff msg -> Cmd aff msg
 simpleTask aff =
-  TaskCmd $ \ctx -> do
-    ms <- aff
-    emitMessages ctx ms
+  TaskCmd $ \ctx ->
+    aff >>= emitMessage ctx
 
 -- | Procudes a task that can emit multiple times
 emittingTask
   :: forall aff msg
-  .  (TaskContext aff (Array msg) -> Aff aff Unit)
+  .  (TaskContext aff msg -> Aff aff Unit)
   -> Cmd aff msg
 emittingTask = TaskCmd
 

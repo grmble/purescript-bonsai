@@ -11,11 +11,11 @@ where
 
 import Prelude
 
-import Bonsai.Core (simpleTask)
+import Bonsai.Core (emittingTask)
 import Bonsai.DOM.Internal (domClearElement, domRequestAnimationFrame)
 import Bonsai.Types (Cmd)
 import Control.Monad.Aff (Aff, delay)
-import Control.Monad.Eff (Eff, whileE)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
@@ -24,13 +24,11 @@ import DOM.HTML (window)
 import DOM.HTML.HTMLElement (focus)
 import DOM.HTML.HTMLInputElement (select)
 import DOM.HTML.Types (htmlDocumentToDocument)
-import DOM.HTML.Window (RequestAnimationFrameId, document, requestAnimationFrame)
-import DOM.Node.Node (firstChild, hasChildNodes, removeChild)
+import DOM.HTML.Window (document)
 import DOM.Node.NonElementParentNode (getElementById)
-import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode, elementToNode)
-import Data.Maybe (Maybe(..), fromJust)
+import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode)
+import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
-import Partial.Unsafe (unsafePartial)
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | Gets a DOM Element by its ID
@@ -43,16 +41,15 @@ domElementById id =
 -- | Cmd that will set the focus to the input field.
 focusCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
 focusCmd id =
-  simpleTask $ do
-    affElementAction (focus <<< unsafeCoerce) id
-    pure []
+  emittingTask \_ ->
+    affElementAction (focus <<< unsafeCoerce) id *> pure unit
+
 
 -- | Cmd that will set the focus and select the input field
 focusSelectCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
 focusSelectCmd id =
-  simpleTask $ do
-    affElementAction action id
-    pure []
+  emittingTask \_ ->
+    affElementAction action id *> pure unit
   where
     action elem = do
       focus (unsafeCoerce elem)

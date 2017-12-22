@@ -47,7 +47,7 @@ import Data.Foreign (F, Foreign, renderForeignError)
 -- | inside a TaskCmd.
 data Cmd eff msg
   = Cmd (Array msg)
-  | TaskCmd ((TaskContext eff (Array msg)) -> (Aff eff Unit))
+  | TaskCmd (TaskContext eff msg -> Aff eff Unit)
 
 -- Cmd is a functor so VNodes/Events can be mapped
 instance cmdFunctor :: Functor (Cmd eff) where
@@ -59,14 +59,14 @@ instance cmdFunctor :: Functor (Cmd eff) where
 mapTask
   :: forall eff a b
   .  (a -> b)
-  -> (TaskContext eff (Array a) -> Aff eff Unit)
-  -> (TaskContext eff (Array b) -> Aff eff Unit)
+  -> (TaskContext eff a -> Aff eff Unit)
+  -> (TaskContext eff b -> Aff eff Unit)
 mapTask f ta contextB =
   let
-    emitA :: Array a -> Eff eff Unit
+    emitA :: a -> Eff eff Unit
     emitA as =
-      contextB.emitter $ map f as
-    contextA :: TaskContext eff (Array a)
+      contextB.emitter $ f as
+    contextA :: TaskContext eff a
     contextA =
       contextB { emitter = emitA }
   in
