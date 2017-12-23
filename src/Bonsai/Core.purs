@@ -17,7 +17,7 @@ import Prelude
 
 import Bonsai.DOM.Internal (domClearElement, domRequestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
-import Bonsai.Types (Cmd(..), Emitter, TaskContext, emptyCommand)
+import Bonsai.Types (BONSAI, Cmd(..), Emitter, TaskContext, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (Aff, joinFiber, runAff_, suspendAff)
 import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar)
@@ -102,7 +102,7 @@ program
   -> (model -> msg -> UpdateResult aff model msg)
   -> (model -> VNode msg)
   -> model
-  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) (Program aff model msg)
+  -> Eff (bonsai::BONSAI|eff) (Program aff model msg)
 program container updater renderer model =
   debugProgram container false false updater renderer model
 
@@ -115,8 +115,8 @@ debugProgram
   -> (model -> msg -> UpdateResult aff model msg)
   -> (model -> VNode msg)
   -> model
-  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) (Program aff model msg)
-debugProgram container dbgTiming dbgEvents updater renderer model = do
+  -> Eff (bonsai::BONSAI|eff) (Program aff model msg)
+debugProgram container dbgTiming dbgEvents updater renderer model = unsafeCoerceEff $ do
   -- use a fake ProgramState so we have a ProgramEnv to render with
   -- (needed for the emitters)
   let vnode = renderer model
@@ -209,7 +209,7 @@ issueCommand
   :: forall bff eff model msg
   .  Program bff model msg
   -> Cmd bff msg
-  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (bonsai::BONSAI|eff) Unit
 issueCommand env cmd = unsafeCoerceEff $ do
   mustUpdate <- queueCommand env cmd
   if mustUpdate

@@ -3,14 +3,13 @@ where
 
 import Prelude
 
-import Bonsai (UpdateResult, domElementById, emitMessage, emittingTask, issueCommand, plainResult, program, simpleTask)
+import Bonsai (BONSAI, UpdateResult, domElementById, emitMessage, emittingTask, issueCommand, plainResult, program, simpleTask)
 import Bonsai.Html (button, div_, render, text, (!))
 import Bonsai.Html.Events (onClick)
 import Bonsai.Types (TaskContext)
 import Bonsai.VirtualDom (VNode)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff, kind Effect)
-import Control.Monad.Eff.AVar (AVAR)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Ref (REF)
@@ -88,7 +87,7 @@ consoleAff ctx = do
   pure unit
 
 -- test using issueCommand from a main program
-main :: Eff (avar::AVAR,clienteff::CLIENTEFF,console::CONSOLE,dom::DOM,ref::REF) Unit
+main :: Eff (bonsai::BONSAI,dom::DOM) Unit
 main = unsafePartial $ do
   Just mainDiv  <- domElementById (ElementId "main")
   prg <- program mainDiv update view 0

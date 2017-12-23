@@ -1,7 +1,8 @@
 -- | This module defines the central Bonsai types
 -- | that are used in the Core and VirtualDom modules.
 module Bonsai.Types
-  ( BrowserEvent
+  ( BONSAI
+  , BrowserEvent
   , Cmd(..)
   , CmdDecoder
   , Emitter
@@ -24,6 +25,9 @@ import Data.Array (intercalate)
 import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, renderForeignError)
 
+
+-- | Effect for public types
+foreign import data BONSAI :: Effect
 
 -- | A Command represents messages that should be applied to the Bonsai model
 -- |
