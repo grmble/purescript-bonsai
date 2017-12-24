@@ -24,7 +24,6 @@ import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (REF, Ref, modifyRef, modifyRef', newRef, readRef, writeRef)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
@@ -141,7 +140,7 @@ queueMessages
   :: forall eff model msg
   .  Program eff model msg
   -> Array msg
-  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
 queueMessages env msgs =
   if null msgs
     then pure unit
@@ -151,7 +150,7 @@ queueMessages env msgs =
       pure unit
 
 -- | Error callback for the Aff commands
-emitError :: forall eff. Error -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+emitError :: forall eff. Error -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
 emitError err =
   logJsonObj "cmd error: " err
 
@@ -163,7 +162,7 @@ emitSuccess
   :: forall eff model msg
   .  Program eff model msg
   -> Array msg
-  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
 emitSuccess env msgs = do
     queueMessages env msgs
     if null msgs
@@ -177,7 +176,7 @@ queueCommand
   :: forall eff model msg
   .  Program eff model msg
   -> Cmd eff msg
-  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Boolean
+  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Boolean
 queueCommand env cmd =
   case cmd of
     Cmd ms -> do
@@ -226,7 +225,7 @@ unsafeCoerceCmd cmd = unsafeCoerce cmd
 taskContext
   :: forall eff model msg
   .  Program eff model msg
-  -> Aff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) (TaskContext eff msg)
+  -> Aff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) (TaskContext eff msg)
 taskContext env = do
   avar <- makeEmptyVar
   pure
@@ -244,7 +243,7 @@ taskContext env = do
 emitter
   :: forall eff model msg
   .  Program eff model msg
-  -> Emitter (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) msg
+  -> Emitter (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) msg
 emitter env ecmd =
   case ecmd of
     Left err ->
@@ -266,7 +265,7 @@ emitMessage ctx msg =
 updateAndRedraw
   :: forall eff model msg
   .  Program eff model msg
-  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
 updateAndRedraw env = do
   updateModel env
   _ <- unsafeCoerceEff $ domRequestAnimationFrame (redrawModel env)
@@ -294,7 +293,7 @@ emittingTask = TaskCmd
 updateModel
   :: forall eff model msg
   .  Program eff model msg
-  -> Eff (avar::AVAR,console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
 updateModel env = do
   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
 
@@ -325,7 +324,7 @@ updateModel env = do
 redrawModel
   :: forall eff model msg
   .  Program eff model msg
-  -> Eff (console::CONSOLE,dom::DOM,ref::REF|eff) Unit
+  -> Eff (bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
 redrawModel env = do
   state <- liftEff $ readRef env.state
   if state.dirty

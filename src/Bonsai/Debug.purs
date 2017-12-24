@@ -5,8 +5,8 @@ where
 
 import Prelude
 
+import Bonsai.Types (BONSAI)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
 import Data.Foreign (Foreign)
 
 -- class DebugWarning
@@ -16,18 +16,18 @@ import Data.Foreign (Foreign)
 -- | Log a message and object to the console.
 foreign import logObj
   :: forall eff a
-  .  String -> a -> Eff (console::CONSOLE|eff) Unit
+  .  String -> a -> Eff (bonsai::BONSAI|eff) Unit
 
 -- | Log a message and JSON.stringify of object to the console.
 foreign import logJson
   :: forall eff a
-  .  String -> a -> Eff (console::CONSOLE|eff) Unit
+  .  String -> a -> Eff (bonsai::BONSAI|eff) Unit
 
 
 -- | Log a message, JSON.stringify and the object to the console.
 foreign import logJsonObj
   :: forall eff a
-  .  String -> a -> Eff (console::CONSOLE|eff) Unit
+  .  String -> a -> Eff (bonsai::BONSAI|eff) Unit
 
 newtype StartTiming =
   StartTiming Foreign
@@ -35,17 +35,17 @@ newtype StartTiming =
 -- | Obtain a start time for timing function execution
 foreign import startTiming
   :: forall eff
-  .  Eff (console::CONSOLE|eff) StartTiming
+  .  Eff (bonsai::BONSAI|eff) StartTiming
 
 -- | Log timing information
 foreign import logTiming
   :: forall eff
-  .  String -> StartTiming -> Eff (console::CONSOLE|eff) Unit
+  .  String -> StartTiming -> Eff (bonsai::BONSAI|eff) Unit
 
 -- | Log timing if in debug mode
 debugTiming
   :: forall eff
-  .  Boolean -> String -> StartTiming -> Eff (console::CONSOLE|eff) Unit
+  .  Boolean -> String -> StartTiming -> Eff (bonsai::BONSAI|eff) Unit
 debugTiming dbg msg start =
   if dbg
     then logTiming msg start
@@ -54,7 +54,7 @@ debugTiming dbg msg start =
 -- | Log json obj if in debug mode
 debugJsonObj
   :: forall eff a
-  .  Boolean -> String -> a -> Eff (console::CONSOLE|eff) Unit
+  .  Boolean -> String -> a -> Eff (bonsai::BONSAI|eff) Unit
 debugJsonObj dbg msg obj =
   if dbg
     then logJsonObj msg obj
