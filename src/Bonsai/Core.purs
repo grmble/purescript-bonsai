@@ -15,7 +15,7 @@ where
 
 import Prelude
 
-import Bonsai.DOM.Internal (domClearElement, domRequestAnimationFrame)
+import Bonsai.DOM.Primitive (Element, appendChild, clearElement, requestAnimationFrame, window)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
 import Bonsai.Types (BONSAI, Cmd(..), Emitter, TaskContext, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
@@ -27,9 +27,6 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (Error)
 import Control.Monad.Eff.Ref (REF, Ref, modifyRef, modifyRef', newRef, readRef, writeRef)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
-import DOM (DOM)
-import DOM.Node.Node (appendChild)
-import DOM.Node.Types (Element, elementToNode)
 import Data.Array (null, snoc)
 import Data.Array.Partial (head, tail)
 import Data.Either (Either(..))
@@ -127,8 +124,8 @@ debugProgram container dbgTiming dbgEvents updater renderer model = unsafeCoerce
 
   ts <- startTiming
   let dnode = render (emitter env) vnode
-  domClearElement container
-  _ <- appendChild (elementToNode dnode) (elementToNode container)
+  clearElement container
+  _ <- appendChild dnode container
   debugTiming env.dbgTiming "render/appendChild" ts
 
   modifyRef fakeState \state -> state { dnode = dnode }
@@ -140,7 +137,7 @@ queueMessages
   :: forall eff model msg
   .  Program eff model msg
   -> Array msg
-  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 queueMessages env msgs =
   if null msgs
     then pure unit
@@ -150,7 +147,7 @@ queueMessages env msgs =
       pure unit
 
 -- | Error callback for the Aff commands
-emitError :: forall eff. Error -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
+emitError :: forall eff. Error -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 emitError err =
   logJsonObj "cmd error: " err
 
@@ -162,7 +159,7 @@ emitSuccess
   :: forall eff model msg
   .  Program eff model msg
   -> Array msg
-  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 emitSuccess env msgs = do
     queueMessages env msgs
     if null msgs
@@ -176,7 +173,7 @@ queueCommand
   :: forall eff model msg
   .  Program eff model msg
   -> Cmd eff msg
-  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Boolean
+  -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Boolean
 queueCommand env cmd =
   case cmd of
     Cmd ms -> do
@@ -225,7 +222,7 @@ unsafeCoerceCmd cmd = unsafeCoerce cmd
 taskContext
   :: forall eff model msg
   .  Program eff model msg
-  -> Aff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) (TaskContext eff msg)
+  -> Aff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) (TaskContext eff msg)
 taskContext env = do
   avar <- makeEmptyVar
   pure
@@ -243,7 +240,7 @@ taskContext env = do
 emitter
   :: forall eff model msg
   .  Program eff model msg
-  -> Emitter (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) msg
+  -> Emitter (avar::AVAR,bonsai::BONSAI,ref::REF|eff) msg
 emitter env ecmd =
   case ecmd of
     Left err ->
@@ -265,10 +262,10 @@ emitMessage ctx msg =
 updateAndRedraw
   :: forall eff model msg
   .  Program eff model msg
-  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 updateAndRedraw env = do
   updateModel env
-  _ <- unsafeCoerceEff $ domRequestAnimationFrame (redrawModel env)
+  _ <- unsafeCoerceEff $ window >>= requestAnimationFrame (redrawModel env)
   pure unit
 
 -- | Produces a simple task (not cancellable, ony emits the return values
@@ -293,7 +290,7 @@ emittingTask = TaskCmd
 updateModel
   :: forall eff model msg
   .  Program eff model msg
-  -> Eff (avar::AVAR,bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 updateModel env = do
   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
 
@@ -324,7 +321,7 @@ updateModel env = do
 redrawModel
   :: forall eff model msg
   .  Program eff model msg
-  -> Eff (bonsai::BONSAI,dom::DOM,ref::REF|eff) Unit
+  -> Eff (bonsai::BONSAI,ref::REF|eff) Unit
 redrawModel env = do
   state <- liftEff $ readRef env.state
   if state.dirty

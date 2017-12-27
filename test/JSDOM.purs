@@ -1,12 +1,16 @@
 module Test.JSDOM
-  ( elementById
-  , makeDocument )
+  ( jsdomDocument
+  , jsdomWindow)
 where
 
+import Prelude
+
+import Bonsai (BONSAI)
+import Bonsai.DOM.Primitive (Document, Window, document)
 import Control.Monad.Eff (Eff)
-import DOM (DOM)
-import DOM.Node.Types (Document, Element)
 
-foreign import makeDocument :: forall eff. String -> Eff (dom::DOM|eff) Document
+foreign import jsdomWindow :: forall eff. String -> Eff (bonsai::BONSAI|eff) Window
 
-foreign import elementById :: forall eff. Document -> String -> Eff (dom::DOM|eff) Element
+jsdomDocument :: forall eff. String -> Eff (bonsai::BONSAI|eff) Document
+jsdomDocument html =
+  jsdomWindow html >>= document

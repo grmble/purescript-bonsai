@@ -1,7 +1,6 @@
 -- | Bonsai DOM Helpers
 module Bonsai.DOM
-  ( module Bonsai.DOM.Internal
-  , domElementById
+  ( module P
   , affElementById
   , affElementAction
   , focusCmd
@@ -12,48 +11,32 @@ where
 import Prelude
 
 import Bonsai.Core (emittingTask)
-import Bonsai.DOM.Internal (domClearElement, domRequestAnimationFrame)
-import Bonsai.Types (Cmd)
+import Bonsai.DOM.Primitive as P
+import Bonsai.Types (BONSAI, Cmd)
 import Control.Monad.Aff (Aff, delay)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (error)
 import Control.Monad.Error.Class (throwError)
-import DOM (DOM)
-import DOM.HTML (window)
-import DOM.HTML.HTMLElement (focus)
-import DOM.HTML.HTMLInputElement (select)
-import DOM.HTML.Types (htmlDocumentToDocument)
-import DOM.HTML.Window (document)
-import DOM.Node.NonElementParentNode (getElementById)
-import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode)
 import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
-import Unsafe.Coerce (unsafeCoerce)
-
--- | Gets a DOM Element by its ID
-domElementById :: forall eff. ElementId -> Eff (dom :: DOM | eff) (Maybe Element)
-domElementById id =
-  window >>=
-  document >>=
-  htmlDocumentToDocument >>> documentToNonElementParentNode >>> getElementById id
 
 -- | Cmd that will set the focus to the input field.
-focusCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
-focusCmd id =
+focusCmd :: forall eff msg. P.Document -> P.ElementId -> Cmd (bonsai::BONSAI|eff) msg
+focusCmd doc id =
   emittingTask \_ ->
-    affElementAction (focus <<< unsafeCoerce) id *> pure unit
+    affElementAction P.focusElement id doc *> pure unit
 
 
 -- | Cmd that will set the focus and select the input field
-focusSelectCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
-focusSelectCmd id =
+focusSelectCmd :: forall eff msg. P.Document -> P.ElementId -> Cmd (bonsai::BONSAI|eff) msg
+focusSelectCmd doc id =
   emittingTask \_ ->
-    affElementAction action id *> pure unit
+    affElementAction action id doc *> pure unit
   where
-    action elem = do
-      focus (unsafeCoerce elem)
-      select (unsafeCoerce elem)
+    action elem =
+      P.focusElement elem *>
+      P.selectInputElementText elem
 
 
 -- | Helper for calling effectful actions on dom nodes.
@@ -62,20 +45,21 @@ focusSelectCmd id =
 -- | before trying to find the element.
 affElementAction
   :: forall eff a
-  .  (Element -> Eff (dom::DOM|eff) a)
-  -> ElementId
-  -> Aff (dom::DOM|eff) a
-affElementAction f id = do
+  .  (P.Element-> Eff (bonsai::BONSAI|eff) a)
+  -> P.ElementId
+  -> P.Document
+  -> Aff (bonsai::BONSAI|eff) a
+affElementAction f id doc = do
   delay (Milliseconds 20.0)
-  elem <- affElementById id
+  elem <- affElementById id doc
   liftEff $ f elem
 
 -- | Get a DOM element in a Aff context
 -- |
 -- | This represents failure as Aff error
-affElementById :: forall eff. ElementId -> Aff (dom::DOM|eff) Element
-affElementById id@(ElementId idStr) = do
-  elem <- liftEff $ domElementById id
+affElementById :: forall eff. P.ElementId -> P.Document -> Aff (bonsai::BONSAI|eff) P.Element
+affElementById id@(P.ElementId idStr) doc = do
+  elem <- liftEff $ P.elementById id doc
   case elem of
     Nothing ->
       throwError $ error ("no element with id " <> idStr)

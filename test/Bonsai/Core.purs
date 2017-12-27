@@ -3,7 +3,7 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, UpdateResult, domElementById, emitMessage, emittingTask, issueCommand, plainResult, program, simpleTask)
+import Bonsai (BONSAI, ElementId(..), UpdateResult, document, elementById, emitMessage, emittingTask, issueCommand, plainResult, program, simpleTask, window)
 import Bonsai.Html (button, div_, render, text, (!))
 import Bonsai.Html.Events (onClick)
 import Bonsai.Types (TaskContext)
@@ -14,11 +14,8 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Free (Free)
-import DOM (DOM)
-import DOM.Node.Types (ElementId(..))
 import Data.Maybe (Maybe(..))
 import Partial.Unsafe (unsafePartial)
-import Test.JSDOM (makeDocument)
 import Test.Unit (TestF, suite, test)
 import Test.Unit.Assert as Assert
 
@@ -87,22 +84,22 @@ consoleAff ctx = do
   pure unit
 
 -- test using issueCommand from a main program
-main :: Eff (bonsai::BONSAI,dom::DOM) Unit
+main :: Eff (bonsai::BONSAI) Unit
 main = unsafePartial $ do
-  Just mainDiv  <- domElementById (ElementId "main")
+  Just mainDiv  <- window >>= document >>= elementById (ElementId "main")
   prg <- program mainDiv update view 0
   issueCommand prg (simpleTask simpleAff)
   issueCommand prg (emittingTask emittingAff)
   pure unit
 
 
-tests :: forall eff. Free (TestF (console::CONSOLE,dom::DOM,ref::REF|eff)) Unit
+tests :: forall eff. Free (TestF (console::CONSOLE,ref::REF|eff)) Unit
 tests =
   suite "Bonsai.Core" do
     test "program/taskContext" do
-      env <- liftEff $ do
-        document <- makeDocument """<html><body id="main"></body></html>"""
-        pure 1
+      -- env <- liftEff $ do
+      --   window <- makeWindow """<html><body id="main"></body></html>"""
+      --  pure 1
         -- XXX: assignment to local variable ...
         -- debugLocalDoc document
         -- element <- elementById document "main"

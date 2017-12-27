@@ -20,7 +20,6 @@
     "purescript-foreign": "^4.0.1",
     "purescript-foreign-generic": "^5.0.0",
     "purescript-tuples": "^4.1.0",
-    "purescript-dom": "^4.13.2",
     "purescript-refs": "^3.0.0",
     "purescript-transformers": "^3.5.0",
     "purescript-sequences": "^1.0.3",

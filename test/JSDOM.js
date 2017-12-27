@@ -2,20 +2,11 @@
 
 const jsdom = require("jsdom");
 
-function makeDocument(str) {
+function jsdomWindow(str) {
   return function () {
       const dom = new jsdom.JSDOM(str);
-      return dom.window.document;
+      return dom.window;
   };
 };
 
-function elementById(doc) {
-  return function (id) {
-    return function () {
-      return doc.getElementById(id);
-    }
-  }
-}
-
-exports.makeDocument = makeDocument;
-exports.elementById = elementById;
+exports.jsdomWindow = jsdomWindow;

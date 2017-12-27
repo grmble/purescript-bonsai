@@ -1542,13 +1542,6 @@ function applyPatchesFn5 (cmdMap, emitter, domNode, oldVirtualNode, patches) {
 	return applyPatches(domNode, oldVirtualNode, patches, mkEventNode(cmdMap, emitter));
 }
 
-// assignment to constant ... will not really work
-function debugLocalDoc (jsdomDoc) {
-	return function() {
-		localDoc = jsdomDoc;
-	}
-}
-
 exports.nodeFn3 = nodeHelp;
 exports.text = text;
 exports.mapFn2 = map;
@@ -1566,4 +1559,3 @@ exports.keyedNodeFn3 = keyedNode;
 exports.renderFn3 = renderFn3;
 exports.diffFn2 = diff;
 exports.applyPatchesFn5 = applyPatchesFn5;
-exports.debugLocalDoc = debugLocalDoc;

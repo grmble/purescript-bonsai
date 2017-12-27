@@ -20,17 +20,15 @@ module Bonsai.VirtualDom
   , render
   , diff
   , applyPatches
-  , debugLocalDoc
   )
 where
 
 import Prelude
 
-import Bonsai.Types (Cmd, CmdDecoder, Emitter)
+import Bonsai.DOM.Primitive (Element)
+import Bonsai.Types (BONSAI, Cmd, CmdDecoder, Emitter)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (Error)
-import DOM (DOM)
-import DOM.Node.Types (Document, Element)
 import Data.Either (Either)
 import Data.Foreign (Foreign, toForeign)
 import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, runFn2, runFn3, runFn4, runFn5)
@@ -291,19 +289,10 @@ applyPatches
   -> Element
   -> VNode msg
   -> Patch msg
-  -> Eff (dom::DOM|eff) Element
+  -> Eff (bonsai::BONSAI|eff) Element
 applyPatches emitter dnode vnode patch =
   pure $ runFn5 applyPatchesFn5 cmdMap emitter dnode vnode patch
 
 foreign import applyPatchesFn5
   :: forall aff a msg
   .  Fn5 (CmdMap aff a msg) (Emitter aff msg) Element (VNode msg) (Patch msg) Element
-
-
--- | Set a debug document for the virtual dom
--- |
--- | For use in testing (jsdom)
-foreign import debugLocalDoc
-  :: forall eff
-  .  Document
-  -> Eff (dom::DOM|eff) Unit
