@@ -6,7 +6,8 @@ import Bonsai (BONSAI)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.AVar (AVAR)
 import Control.Monad.Eff.Console (CONSOLE)
-import Control.Monad.Eff.Ref (REF)
+import Control.Monad.Eff.Exception (EXCEPTION)
+import Test.Bonsai.Core (CLIENTEFF)
 import Test.Bonsai.Core as BCore
 import Test.Bonsai.DOM as BDOM
 import Test.Bonsai.EventDecoder as BEventDecoder
@@ -16,11 +17,12 @@ import Unsafe.Coerce (unsafeCoerce)
 
 main :: forall t1.
   Eff
-    ( console :: CONSOLE
+    ( avar :: AVAR
     , bonsai :: BONSAI
+    , clienteff :: CLIENTEFF
+    , console :: CONSOLE
     , testOutput :: TESTOUTPUT
-    , avar :: AVAR
-    , ref :: REF
+    , exception :: EXCEPTION
     | t1
     )
     Unit

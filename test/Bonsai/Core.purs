@@ -3,19 +3,22 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, ElementId(..), UpdateResult, emitMessage, emittingTask, issueCommand, plainResult, program, simpleTask, window)
-import Bonsai.Html (button, div_, render, text, (!))
+import Bonsai (BONSAI, ElementId(..), UpdateResult, Program, elementById, emitMessage, emittingTask, issueCommand, plainResult, program, pureCommand, simpleTask, window)
+import Bonsai.DOM.Primitive (textContent)
+import Bonsai.Html (button, div_, render, span, text, (!))
+import Bonsai.Html.Attributes (id_)
 import Bonsai.Html.Events (onClick)
 import Bonsai.Types (TaskContext)
 import Bonsai.VirtualDom (VNode)
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff (Aff, Milliseconds(..), delay)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Free (Free)
+import Data.Maybe (Maybe(..))
 import Partial.Unsafe (unsafePartial)
+import Test.JSDOM (jsdomWindow)
 import Test.Unit (TestF, suite, test)
 import Test.Unit.Assert as Assert
 
@@ -54,7 +57,8 @@ update model msg =
 view :: Model -> VNode Msg
 view model =
   render $ div_ $ do
-    text $ show model
+    span ! id_ "counter" $ do
+      text $ show model
     button ! onClick Inc $ text "+"
     button ! onClick Dec $ text "-"
 
@@ -84,6 +88,7 @@ consoleAff ctx = do
   pure unit
 
 -- test using issueCommand from a main program
+-- this is only here to make sure it compiles
 main :: Eff (bonsai::BONSAI,exception::EXCEPTION) Unit
 main = unsafePartial $ do
   prg <- window >>=
@@ -93,18 +98,28 @@ main = unsafePartial $ do
   pure unit
 
 
-tests :: forall eff. Free (TestF (console::CONSOLE,ref::REF|eff)) Unit
+elementTextAfterRender
+  :: forall eff model msg
+  .  Program eff model msg
+  -> ElementId
+  -> Aff (bonsai::BONSAI|eff) String
+elementTextAfterRender env id = do
+  delay (Milliseconds 100.0) -- XXX: delay until rendered
+  liftEff $ unsafePartial $ do
+    Just elem <- elementById (ElementId "counter") env.document
+    textContent elem
+
+
+tests :: forall eff. Free (TestF (bonsai::BONSAI,clienteff::CLIENTEFF,console::CONSOLE,exception::EXCEPTION|eff)) Unit
 tests =
   suite "Bonsai.Core" do
     test "program/taskContext" do
-      -- env <- liftEff $ do
-      --   window <- makeWindow """<html><body id="main"></body></html>"""
-      --  pure 1
-        -- XXX: assignment to local variable ...
-        -- debugLocalDoc document
-        -- element <- elementById document "main"
-        -- program element update view 0
+      env <- liftEff $
+        jsdomWindow """<html><body id="main"></body></html>""" >>=
+        program (ElementId "main") update view 0
+      initialText <- elementTextAfterRender env (ElementId "counter")
+      Assert.equal "0" initialText
 
-      -- XXX: Bonsai.DOM.requestAnimationFrame: doesnt work, no window when testing
-      -- emitMessage (taskContext env) [Inc]
-      Assert.equal 1 1
+      liftEff $ issueCommand env $ pureCommand Inc
+      textAfterInc <- elementTextAfterRender env (ElementId "counter")
+      Assert.equal "1" textAfterInc

@@ -7,7 +7,6 @@ import Bonsai (BONSAI)
 import Bonsai.DOM.Primitive (ElementId(..), elementById)
 import Bonsai.Types (Document(..))
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Free (Free)
 import Data.Foreign (isNull, isUndefined)
 import Data.Maybe (isJust)
@@ -18,7 +17,7 @@ import Test.Unit.Assert as Assert
 mainHtml :: String
 mainHtml = """<html><body id="main"></body></html>"""
 
-tests :: forall eff. Free (TestF (console::CONSOLE,bonsai::BONSAI|eff)) Unit
+tests :: forall eff. Free (TestF (bonsai::BONSAI|eff)) Unit
 tests =
   suite "Bonsai.DOM" do
     test "document" do

@@ -22,6 +22,7 @@ module Bonsai.DOM.Primitive
   , focusElement
   , requestAnimationFrame
   , selectInputElementText
+  , textContent
   , window
   )
 where
@@ -90,6 +91,9 @@ foreign import requestAnimationFrame
 
 -- | Select the input elements text.
 foreign import selectInputElementText :: forall eff. Element -> Eff (bonsai::BONSAI|eff) Unit
+
+-- | Get the element's text content
+foreign import textContent :: forall eff. Element -> Eff (bonsai::BONSAI|eff) String
 
 maybeNull :: forall eff a. (Foreign -> a) -> Foreign -> Eff (bonsai::BONSAI|eff) (Maybe a)
 maybeNull fn f =
