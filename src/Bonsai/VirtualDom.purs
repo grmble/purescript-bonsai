@@ -26,12 +26,12 @@ where
 import Prelude
 
 import Bonsai.DOM.Primitive (Element)
-import Bonsai.Types (BONSAI, Cmd, CmdDecoder, Emitter)
+import Bonsai.Types (BONSAI, Cmd, CmdDecoder, Document, Emitter)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (Error)
 import Data.Either (Either)
 import Data.Foreign (Foreign, toForeign)
-import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, runFn2, runFn3, runFn4, runFn5)
+import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn6, runFn2, runFn3, runFn4, runFn6)
 import Data.Tuple (Tuple)
 
 -- | An immutable chunk of data representing a DOM node. This can be HTML or SVG.
@@ -253,14 +253,15 @@ foreign import keyedNodeFn3 ::
 -- | should be used.
 render
   :: forall aff msg
-  .  Emitter aff msg
+  .  Document
+  -> Emitter aff msg
   -> VNode msg
   -> Element
-render = runFn3 renderFn3 cmdMap
+render doc = runFn4 renderFn4 doc cmdMap
 
-foreign import renderFn3
+foreign import renderFn4
   :: forall aff a msg
-  .  Fn3 (CmdMap aff a msg) (Emitter aff msg) (VNode msg) Element
+  .  Fn4 Document (CmdMap aff a msg) (Emitter aff msg) (VNode msg) Element
 
 -- internal concrete alias so we can get it into javascript
 type CmdMap aff a b = (a -> b) -> (Either Error (Cmd aff a)) -> (Either Error (Cmd aff b))
@@ -285,14 +286,15 @@ foreign import diffFn2
 -- | diff/applyPatches pass, or the initially rendered one.
 applyPatches
   :: forall eff aff msg
-  .  Emitter aff msg
+  .  Document
+  -> Emitter aff msg
   -> Element
   -> VNode msg
   -> Patch msg
   -> Eff (bonsai::BONSAI|eff) Element
-applyPatches emitter dnode vnode patch =
-  pure $ runFn5 applyPatchesFn5 cmdMap emitter dnode vnode patch
+applyPatches doc emitter domNode oldVirtualNode patches =
+  pure $ runFn6 applyPatchesFn6 doc cmdMap emitter domNode oldVirtualNode patches
 
-foreign import applyPatchesFn5
+foreign import applyPatchesFn6
   :: forall aff a msg
-  .  Fn5 (CmdMap aff a msg) (Emitter aff msg) Element (VNode msg) (Patch msg) Element
+  .  Fn6 Document (CmdMap aff a msg) (Emitter aff msg) Element (VNode msg) (Patch msg) Element

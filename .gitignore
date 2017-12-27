@@ -8,3 +8,7 @@
 /.psa*
 *.x
 x.*
+
+/index.html
+/src/Main.purs
+/Main.purs

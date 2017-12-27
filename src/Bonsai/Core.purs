@@ -15,22 +15,23 @@ where
 
 import Prelude
 
-import Bonsai.DOM.Primitive (Element, appendChild, clearElement, requestAnimationFrame, window)
+import Bonsai.DOM.Primitive (Element, ElementId(..), appendChild, clearElement, document, elementById, requestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
-import Bonsai.Types (BONSAI, Cmd(..), Emitter, TaskContext, emptyCommand)
+import Bonsai.Types (BONSAI, Cmd(..), Document, Emitter, TaskContext, Window, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (Aff, joinFiber, runAff_, suspendAff)
 import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (Error)
+import Control.Monad.Eff.Exception (EXCEPTION, Error, error, throwException)
 import Control.Monad.Eff.Ref (REF, Ref, modifyRef, modifyRef', newRef, readRef, writeRef)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Data.Array (null, snoc)
 import Data.Array.Partial (head, tail)
 import Data.Either (Either(..))
 import Data.Foldable (for_)
+import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
 import Unsafe.Coerce (unsafeCoerce)
@@ -50,6 +51,8 @@ type Program aff model msg =
   , renderer :: model -> VNode msg
   , pending  :: Ref (Array msg)
   , state    :: Ref (ProgramState model msg)
+  , window   :: Window
+  , document :: Document
   }
 
 -- | An update functions returns a new model and a possibly empty command
@@ -94,42 +97,52 @@ type ProgramState model msg =
 -- | Create initial environment for the Bonsai program.
 program
   :: forall eff aff model msg
-  .  Element
+  .  ElementId
   -> (model -> msg -> UpdateResult aff model msg)
   -> (model -> VNode msg)
   -> model
-  -> Eff (bonsai::BONSAI|eff) (Program aff model msg)
-program container updater renderer model =
-  debugProgram container false false updater renderer model
+  -> Window
+  -> Eff (bonsai::BONSAI,exception::EXCEPTION|eff) (Program aff model msg)
+program containerId updater renderer model =
+  debugProgram containerId updater renderer model false false
 
 
 debugProgram
   :: forall eff aff model msg
-  .  Element
-  -> Boolean
-  -> Boolean
+  .  ElementId
   -> (model -> msg -> UpdateResult aff model msg)
   -> (model -> VNode msg)
   -> model
-  -> Eff (bonsai::BONSAI|eff) (Program aff model msg)
-debugProgram container dbgTiming dbgEvents updater renderer model = unsafeCoerceEff $ do
-  -- use a fake ProgramState so we have a ProgramEnv to render with
-  -- (needed for the emitters)
-  let vnode = renderer model
-  fakeState <- newRef { model: model, vnode: vnode, dnode: container, dirty: false }
-  pending   <- newRef []
-  let env = { dbgTiming, dbgEvents, updater: updater
-            , renderer: renderer, pending: pending, state: fakeState
-            }
+  -> Boolean
+  -> Boolean
+  -> Window
+  -> Eff (bonsai::BONSAI,exception::EXCEPTION|eff) (Program aff model msg)
+debugProgram containerId@(ElementId idStr) updater renderer model dbgTiming dbgEvents _window =
+  unsafeCoerceEff $ do
+    _document <- document _window
+    element   <- elementById containerId _document
+    case element of
+      Nothing ->
+        throwException (error $ "element not found:" <> idStr)
+      Just container -> do
+        -- use a fake ProgramState so we have a ProgramEnv to render with
+        -- (needed for the emitters)
+        let vnode = renderer model
+        fakeState <- newRef { model: model, vnode: vnode, dnode: container, dirty: false }
+        pending   <- newRef []
+        let env = { dbgTiming, dbgEvents, updater: updater
+                  , renderer: renderer, pending: pending, state: fakeState
+                  , window: _window, document: _document
+                  }
 
-  ts <- startTiming
-  let dnode = render (emitter env) vnode
-  clearElement container
-  _ <- appendChild dnode container
-  debugTiming env.dbgTiming "render/appendChild" ts
+        ts <- startTiming
+        let dnode = render env.document (emitter env) vnode
+        clearElement container
+        _ <- appendChild dnode container
+        debugTiming env.dbgTiming "render/appendChild" ts
 
-  modifyRef fakeState \state -> state { dnode = dnode }
-  pure env
+        modifyRef fakeState \state -> state { dnode = dnode }
+        pure env
 
 
 -- | Queue messages that will be applied to the model.
@@ -227,7 +240,8 @@ taskContext env = do
   avar <- makeEmptyVar
   pure
     { emitter: emitTheTypeIsALie
-      , fiber: avar
+    , fiber: avar
+    , document: env.document
     }
   where
     emitTheTypeIsALie msg =
@@ -265,7 +279,7 @@ updateAndRedraw
   -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 updateAndRedraw env = do
   updateModel env
-  _ <- unsafeCoerceEff $ window >>= requestAnimationFrame (redrawModel env)
+  _ <- unsafeCoerceEff $ requestAnimationFrame (redrawModel env) env.window
   pure unit
 
 -- | Produces a simple task (not cancellable, ony emits the return values
@@ -329,7 +343,7 @@ redrawModel env = do
       ts <- startTiming
       let vnode2 = env.renderer state.model
       let patch = diff state.vnode vnode2
-      dnode2 <- liftEff $ applyPatches (emitter env) state.dnode state.vnode patch
+      dnode2 <- liftEff $ applyPatches env.document (emitter env) state.dnode state.vnode patch
       debugTiming env.dbgTiming "render/diff/applyPatches" ts
       writeRef env.state (state {vnode = vnode2, dnode = dnode2, dirty = false})
     else

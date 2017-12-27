@@ -3,7 +3,7 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, ElementId(..), UpdateResult, document, elementById, emitMessage, emittingTask, issueCommand, plainResult, program, simpleTask, window)
+import Bonsai (BONSAI, ElementId(..), UpdateResult, emitMessage, emittingTask, issueCommand, plainResult, program, simpleTask, window)
 import Bonsai.Html (button, div_, render, text, (!))
 import Bonsai.Html.Events (onClick)
 import Bonsai.Types (TaskContext)
@@ -12,9 +12,9 @@ import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
+import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Free (Free)
-import Data.Maybe (Maybe(..))
 import Partial.Unsafe (unsafePartial)
 import Test.Unit (TestF, suite, test)
 import Test.Unit.Assert as Assert
@@ -84,10 +84,10 @@ consoleAff ctx = do
   pure unit
 
 -- test using issueCommand from a main program
-main :: Eff (bonsai::BONSAI) Unit
+main :: Eff (bonsai::BONSAI,exception::EXCEPTION) Unit
 main = unsafePartial $ do
-  Just mainDiv  <- window >>= document >>= elementById (ElementId "main")
-  prg <- program mainDiv update view 0
+  prg <- window >>=
+    program (ElementId "main") update view 0
   issueCommand prg (simpleTask simpleAff)
   issueCommand prg (emittingTask emittingAff)
   pure unit

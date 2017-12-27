@@ -43,7 +43,6 @@ Edit src/Main.purs
     import Bonsai.Html.Attributes
     import Bonsai.Html.Events
     import Data.Maybe
-    import Partial.Unsafe (unsafePartial)
 
     type Model = Int
 
@@ -66,9 +65,8 @@ Edit src/Main.purs
         button ! onClick Inc $ text "+"
         button ! onClick Dec $ text "-"
 
-    main = unsafePartial $ do
-      Just mainDiv  <- window >>= document >>= elementById (ElementId "main")
-      _ <- program mainDiv update view 0
+    main = do
+      _ <- window >>= debugProgram (ElementId "main") update view 0 true true
       pure unit
   
 

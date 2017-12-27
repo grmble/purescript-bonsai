@@ -6,7 +6,8 @@ where
 import Prelude
 
 import Bonsai (BONSAI)
-import Bonsai.DOM.Primitive (Document, Window, document)
+import Bonsai.DOM.Primitive (document)
+import Bonsai.Types (Document, Window)
 import Control.Monad.Eff (Eff)
 
 foreign import jsdomWindow :: forall eff. String -> Eff (bonsai::BONSAI|eff) Window

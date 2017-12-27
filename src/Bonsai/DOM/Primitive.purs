@@ -15,8 +15,6 @@ module Bonsai.DOM.Primitive
   ( Element(..)
   , ElementId(..)
   , RequestAnimationFrameId(..)
-  , Document(..)
-  , Window(..)
   , appendChild
   , clearElement
   , document
@@ -30,7 +28,7 @@ where
 
 import Prelude
 
-import Bonsai.Types (BONSAI)
+import Bonsai.Types (BONSAI, Document, Window)
 import Control.Monad.Eff (Eff)
 import Data.Foreign (Foreign, isNull, isUndefined)
 import Data.Maybe (Maybe(..))
@@ -46,15 +44,6 @@ newtype RequestAnimationFrameId =
 -- | A DOM Element
 newtype Element =
   Element Foreign
-
--- | The type for the global javascript document
-newtype Document =
-  Document Foreign
-
--- | The type for the global javascript window
-newtype Window =
-  Window Foreign
-
 
 -- | Get the global javascript Window object
 foreign import window

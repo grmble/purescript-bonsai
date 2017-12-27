@@ -4,7 +4,8 @@ where
 import Prelude
 
 import Bonsai (BONSAI)
-import Bonsai.DOM.Primitive (Document(Document), ElementId(ElementId), elementById)
+import Bonsai.DOM.Primitive (ElementId(..), elementById)
+import Bonsai.Types (Document(..))
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Free (Free)

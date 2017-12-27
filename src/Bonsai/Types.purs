@@ -5,9 +5,11 @@ module Bonsai.Types
   , BrowserEvent
   , Cmd(..)
   , CmdDecoder
+  , Document(..)
   , Emitter
   , EventDecoder
   , TaskContext
+  , Window(..)
   , f2cmd
   , emptyCommand
   , pureCommand
@@ -76,6 +78,15 @@ mapTask f ta contextB =
   in
     ta contextA
 
+
+-- | The type for the global javascript document
+newtype Document =
+  Document Foreign
+
+-- | The type for the global javascript window
+newtype Window =
+  Window Foreign
+
 -- | The Task Context holds the emitter function for the task
 -- |
 -- | Maybe: a way to get at the current model?
@@ -84,6 +95,7 @@ mapTask f ta contextB =
 type TaskContext eff msg =
   { emitter :: msg -> Eff eff Unit
   , fiber :: AVar (Fiber eff Unit)
+  , document :: Document
   }
 
 -- | A BrowserEvent is simply a decoded foreign

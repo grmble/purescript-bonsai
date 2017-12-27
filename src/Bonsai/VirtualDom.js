@@ -6,7 +6,15 @@ const EVENT_KEY = 'EVENT';
 const ATTR_KEY = 'ATTR';
 const ATTR_NS_KEY = 'ATTR_NS';
 
-const localDoc = typeof document !== 'undefined' ? document : {};
+// close over a document - global or jsdom
+//
+// closedDoc is a top level constant in Elm VirtualDom
+// we need it to be an argument.
+// to keep the diff minimal, we close the whole elm source
+// over the document.
+//
+// XXX - see if performance suffers
+function closeOverDocument(localDoc) {
 
 ////////////  VIRTUAL DOM NODES  ////////////
 
@@ -1502,21 +1510,37 @@ const mostEvents = [
 
 const allEvents = mostEvents.concat('wheel', 'scroll');
 
+function topEventNode(eventNode) {
+	while(eventNode.parent) {
+		eventNode = eventNode.parent;
+	}
+	return eventNode;
+}
 
+return {
+		nodeHelp: nodeHelp,
+		text: text,
+		map: map,
+		property: property,
+		style: style,
+		attribute: attribute,
+		attributeNS: attributeNS,
+		on: on,
+		lazy: lazy,
+		lazy2: lazy2,
+		lazy3: lazy3,
+		keyedNode: keyedNode,
+
+		render: render,
+		diff: diff,
+		applyPatches: applyPatches,
+};
+// end of closed over document
+}
 
 
 //  PURESCRIPT SPECIFIC
 
-
-function identity(x) {
-	return x;
-}
-
-// purescript version handles the currying on the purescript side
-// it's identity, but JavaScript
-function F2(x) {
-	return x;
-}
 
 // make an event node for render/applyPatches
 // emitter is the function to emit events - will feed the bonsai event loop.
@@ -1527,35 +1551,28 @@ function mkEventNode(cmdMap, emitter) {
 	return { parent: undefined, emitter: emitter, cmdMap: cmdMap};
 }
 
-function topEventNode(eventNode) {
-	while(eventNode.parent) {
-		eventNode = eventNode.parent;
-	}
-	return eventNode;
-}
+exports.renderFn4 = function (localDoc, cmdMap, emitter, vNode) {
+	return closeOverDocument(localDoc).render(vNode, mkEventNode(cmdMap, emitter));
+};
 
-function renderFn3 (cmdMap, emitter, vNode) {
-	return render(vNode, mkEventNode(cmdMap, emitter));
-}
+exports.applyPatchesFn6 = function (localDoc, cmdMap, emitter, domNode, oldVirtualNode, patches) {
+	return closeOverDocument(localDoc)
+		.applyPatches(domNode, oldVirtualNode, patches, mkEventNode(cmdMap, emitter));
+};
 
-function applyPatchesFn5 (cmdMap, emitter, domNode, oldVirtualNode, patches) {
-	return applyPatches(domNode, oldVirtualNode, patches, mkEventNode(cmdMap, emitter));
-}
+const unclosed = closeOverDocument(undefined);
 
-exports.nodeFn3 = nodeHelp;
-exports.text = text;
-exports.mapFn2 = map;
-exports.propertyFn2 = property;
-exports.style = style;
-exports.attributeFn2 = attribute;
-exports.attributeFn3 = attributeNS;
-exports.style = style;
-exports.onFn3 = on;
-exports.lazyFn2 = lazy;
-exports.lazy2Fn3 = lazy2;
-exports.lazy3Fn4 = lazy3;
-exports.keyedNodeFn3 = keyedNode;
-
-exports.renderFn3 = renderFn3;
-exports.diffFn2 = diff;
-exports.applyPatchesFn5 = applyPatchesFn5;
+exports.nodeFn3 = unclosed.nodeHelp;
+exports.text = unclosed.text;
+exports.mapFn2 = unclosed.map;
+exports.propertyFn2 = unclosed.property;
+exports.style = unclosed.style;
+exports.attributeFn2 = unclosed.attribute;
+exports.attributeFn3 = unclosed.attributeNS;
+exports.style = unclosed.style;
+exports.onFn3 = unclosed.on;
+exports.lazyFn2 = unclosed.lazy;
+exports.lazy2Fn3 = unclosed.lazy2;
+exports.lazy3Fn4 = unclosed.lazy3;
+exports.keyedNodeFn3 = unclosed.keyedNode;
+exports.diffFn2 = unclosed.diff;
