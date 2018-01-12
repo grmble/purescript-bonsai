@@ -3,11 +3,6 @@
 Functional web programming in Purescript.  Heavily inspired by Elm & using
 the Elm Virtual DOM.
 
-*DISCLAIMER*: Not ready for public consumption.  Things are still changing
-in major ways.
-
-It does have:
-
 * Elm's Virtual DOM as backend
 * Event/command system for functional updates to the virtual DOM
 * Integration of event/command system with purecript's Eff and Aff.
@@ -68,7 +63,7 @@ Edit src/Main.purs
     main = do
       _ <- window >>= debugProgram (ElementId "main") update view 0 true true
       pure unit
-  
+
 
 Add a index.html in your project root
 
