@@ -59,8 +59,8 @@ view model =
   render $ div_ $ do
     span ! id_ "counter" $ do
       text $ show model
-    button ! onClick Inc $ text "+"
-    button ! onClick Dec $ text "-"
+    button ! id_ "plusButton" ! onClick Inc $ text "+"
+    button ! id_ "minusButton" ! onClick Dec $ text "-"
 
 simpleAff :: forall eff. Aff (clienteff::CLIENTEFF|eff) Msg
 simpleAff =
@@ -123,3 +123,13 @@ tests =
       liftEff $ issueCommand env $ pureCommand Inc
       textAfterInc <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "1" textAfterInc
+
+      {--
+      -- XXX: does not work - can't get it the event to fire
+
+      liftEff $ unsafePartial $ do
+        Just button <- elementById (ElementId "plusButton") env.document
+        fireClick button
+      textAfterClick <- elementTextAfterRender env (ElementId "counter")
+      Assert.equal "2" textAfterInc
+      --}

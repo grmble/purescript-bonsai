@@ -42,7 +42,6 @@ exports.requestAnimationFrame = function (eff) {
   return function (win) {
     return function () {
       if (typeof win.requestAnimationFrame === "undefined") {
-        console.log("NO REQUEST ANIMATION FRAME");
         win.setTimeout(eff);
         return 0xdeadbeef;
       }
