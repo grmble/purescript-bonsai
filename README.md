@@ -21,63 +21,70 @@ the Elm Virtual DOM.
 
 Start a fresh project
 
-    mkdir your-project
-    cd your-project
-    pulp init
-    bower install --save purescript-bonsai
-    pulp build
+```sh
+mkdir your-project
+cd your-project
+pulp init
+bower install --save purescript-bonsai
+pulp build
+```
 
 Edit src/Main.purs
 
-    module Main where
+```purescript
+module Main where
 
-    import Prelude
+import Prelude
 
-    import Bonsai
-    import Bonsai.Html
-    import Bonsai.Html.Attributes
-    import Bonsai.Html.Events
-    import Data.Maybe
+import Bonsai
+import Bonsai.Html
+import Bonsai.Html.Attributes
+import Bonsai.Html.Events
+import Data.Maybe
 
-    type Model = Int
+type Model = Int
 
-    data Msg
-      = Inc
-      | Dec
+data Msg
+  = Inc
+  | Dec
 
-    update :: forall eff. Model -> Msg -> UpdateResult eff Model Msg
-    update model msg = plainResult $
-      case msg of
-        Inc ->
-          model + 1
-        Dec ->
-          model - 1
+update :: forall eff. Model -> Msg -> UpdateResult eff Model Msg
+update model msg = plainResult $
+  case msg of
+    Inc ->
+      model + 1
+    Dec ->
+      model - 1
 
-    view :: Model -> VNode Msg
-    view model =
-      render $ div_ $ do
-        text $ show model
-        button ! onClick Inc $ text "+"
-        button ! onClick Dec $ text "-"
+view :: Model -> VNode Msg
+view model =
+  render $ div_ $ do
+    text $ show model
+    button ! onClick Inc $ text "+"
+    button ! onClick Dec $ text "-"
 
-    main = do
-      _ <- window >>= debugProgram (ElementId "main") update view 0 true true
-      pure unit
-
+main = do
+  _ <- window >>= debugProgram (ElementId "main") update view 0 true true
+  pure unit
+```
 
 Add a index.html in your project root
 
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8"/>
-      </head>
-      <body style="padding: 2em;">
-        <div id="main"></div>
-      </body>
-      <script type='text/javascript' src='app.js'></script>
-    </html>
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+  </head>
+  <body style="padding: 2em;">
+    <div id="main"></div>
+  </body>
+  <script type='text/javascript' src='app.js'></script>
+</html>
+```
 
 Start pulp in server mode
 
-    pulp server
+```sh
+pulp server
+```
