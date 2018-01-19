@@ -21,7 +21,7 @@ exports.primElementById = function (id) {
 exports.appendChild = function (child) {
   return function (parent) {
     return function () {
-      parent.append(child);
+      parent.appendChild(child);
     };
   };
 };
