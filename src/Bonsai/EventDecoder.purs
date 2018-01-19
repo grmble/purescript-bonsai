@@ -102,11 +102,11 @@ nameAndValue arr idx = do
   name <- elem ! "name" >>= rnu readString
   value <- elem ! "value" >>= rnu readString
   checked <- elem ! "checked" >>= rnu readBoolean
-  typ <- elem ! "type" >>= readString
+  typ <- elem ! "type" >>= rnu readString
 
   pure $
     case typ of
-      "checkbox" -> do
+      Just "checkbox" -> do
         b <- checked
         if b
           then Tuple <$> name <*> Just "on"
