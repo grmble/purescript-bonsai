@@ -7,7 +7,7 @@ module Bonsai.Html.Events
   ( module Bonsai.VirtualDom
   , preventDefaultStopPropagation
   , onClick
-  , onCheckedInput
+  , onCheckedChange
   , onInput
   , onKeyEnter
   , onKeyEnterEscape
@@ -37,10 +37,10 @@ onInput :: forall msg. (String -> msg) -> Property msg
 onInput f =
   on "input" (f2cmd pureCommand <<< map f <<< targetValueEvent)
 
--- | Suboptimal helper for boolean (radio, checkbox) input
-onCheckedInput :: forall msg. (Boolean -> msg) -> Property msg
-onCheckedInput f =
-  on "input" (f2cmd pureCommand <<< map f <<< targetCheckedEvent)
+-- | Suboptimal helper for boolean (checkbox) input
+onCheckedChange :: forall msg. (Boolean -> msg) -> Property msg
+onCheckedChange f =
+  on "change" (f2cmd pureCommand <<< map f <<< targetCheckedEvent)
 
 -- | Event listener property for the click event.
 onClick :: forall msg. msg -> Property msg
