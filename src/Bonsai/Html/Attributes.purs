@@ -63,7 +63,9 @@ title =
 -- | Defines the type of a button, input, or ...
 typ :: forall msg. String -> VD.Property msg
 typ =
-  stringProperty "type"
+  -- setting this as property causes ie errors
+  -- https://github.com/grmble/purescript-bonsai/issues/24
+  attribute "type"
 
 -- | Defines the type of a button, input, or ...
 type_ :: forall msg. String -> VD.Property msg
@@ -76,7 +78,7 @@ value =
   stringProperty "value"
 
 -- | Defines an initial value which will be displayed in an input when
--- | it is added to the DOM. Unline value, changing defaultValue after
+-- | it is added to the DOM. Unlike value, changing defaultValue after
 -- | the input has been added to the DOM has no effect.
 defaultValue :: forall msg. String -> VD.Property msg
 defaultValue =
@@ -145,7 +147,9 @@ novalidate =
 -- | Defines a regular expression which an input will be validated against.
 pattern :: forall msg.  String -> VD.Property msg
 pattern =
-  stringProperty "pattern"
+  -- phantom patterns on reused input fiels
+  -- https://github.com/grmble/purescript-bonsai/issues/24
+  attribute "pattern"
 
 -- | Indicates whether an input or textarea can be edited.
 readonly :: forall msg. Boolean -> VD.Property msg
