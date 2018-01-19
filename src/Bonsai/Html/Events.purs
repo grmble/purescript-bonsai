@@ -7,6 +7,7 @@ module Bonsai.Html.Events
   ( module Bonsai.VirtualDom
   , preventDefaultStopPropagation
   , onClick
+  , onCheckedInput
   , onInput
   , onKeyEnter
   , onKeyEnterEscape
@@ -16,12 +17,12 @@ where
 
 import Prelude
 
-import Bonsai.EventDecoder (enterEscapeKeyEvent, targetValueEvent, targetValuesEvent)
+import Bonsai.EventDecoder (enterEscapeKeyEvent, targetCheckedEvent, targetValueEvent, targetValuesEvent)
 import Bonsai.Types (emptyCommand, f2cmd, pureCommand)
 import Bonsai.VirtualDom (Property, Options, on, onWithOptions)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Data.StrMap (StrMap)
+import Data.Map (Map)
 
 
 -- | Event options: prevent default, stop propagation
@@ -35,6 +36,11 @@ preventDefaultStopPropagation =
 onInput :: forall msg. (String -> msg) -> Property msg
 onInput f =
   on "input" (f2cmd pureCommand <<< map f <<< targetValueEvent)
+
+-- | Suboptimal helper for boolean (radio, checkbox) input
+onCheckedInput :: forall msg. (Boolean -> msg) -> Property msg
+onCheckedInput f =
+  on "input" (f2cmd pureCommand <<< map f <<< targetCheckedEvent)
 
 -- | Event listener property for the click event.
 onClick :: forall msg. msg -> Property msg
@@ -67,7 +73,7 @@ onKeyEnterEscape enterFn escFn =
       pureCommand $ enterFn s
 
 -- | Emit a command on form submit.
-onSubmit :: forall msg. (StrMap String -> msg) -> Property msg
+onSubmit :: forall msg. (Map String String -> msg) -> Property msg
 onSubmit cmdFn =
   onWithOptions "submit" preventDefaultStopPropagation
     (f2cmd (pureCommand <<< cmdFn) <<< targetValuesEvent)
