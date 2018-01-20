@@ -17,12 +17,11 @@ where
 
 import Prelude
 
-import Bonsai.EventDecoder (enterEscapeKeyEvent, targetCheckedEvent, targetValueEvent, targetValuesEvent)
+import Bonsai.EventDecoder (enterEscapeKeyEvent, targetCheckedEvent, targetValueEvent)
 import Bonsai.Types (emptyCommand, f2cmd, pureCommand)
 import Bonsai.VirtualDom (Property, Options, on, onWithOptions)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Data.Map (Map)
 
 
 -- | Event options: prevent default, stop propagation
@@ -73,7 +72,7 @@ onKeyEnterEscape enterFn escFn =
       pureCommand $ enterFn s
 
 -- | Emit a command on form submit.
-onSubmit :: forall msg. (Map String String -> msg) -> Property msg
-onSubmit cmdFn =
+onSubmit :: forall msg. msg -> Property msg
+onSubmit msg =
   onWithOptions "submit" preventDefaultStopPropagation
-    (f2cmd (pureCommand <<< cmdFn) <<< targetValuesEvent)
+    (\_ -> Right $ pureCommand msg)

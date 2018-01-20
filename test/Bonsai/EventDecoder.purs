@@ -11,8 +11,9 @@ import Control.Monad.Except (runExcept)
 import Control.Monad.Free (Free)
 import Data.Either (Either(..), isLeft)
 import Data.Foreign (Foreign, toForeign)
+import Data.Map (fromFoldable)
 import Data.Maybe (Maybe(..))
-import Data.StrMap (fromFoldable)
+import Data.NonEmpty (singleton)
 import Data.Tuple (Tuple(..))
 import Test.Unit (TestF, suite, test)
 import Test.Unit.Assert as Assert
@@ -23,12 +24,15 @@ tests = suite "Bonsai.EventDecoder" do
     assertEqual "asdf" targetValueEvent $ toForeign { target: { value : "asdf" } }
     assertLeft "no value" targetValueEvent $ toForeign { target: { xxx: "asdf" } }
   test "targetValuesEvent" do
-    assertEqual (fromFoldable [Tuple "key" "asdf"]) targetValuesEvent $ toForeign { target: [ {name:"key", value:"asdf"} ] }
+    assertEqual (fromFoldable [Tuple "key" (singleton "asdf")])
+      targetValuesEvent $ toForeign { target: [ {name:"key", value:"asdf"} ] }
     -- contained elements without name and value are ignored
     assertEqual (fromFoldable []) targetValuesEvent $ toForeign { target: [ {nameX:"key", value:"asdf"}] }
     assertEqual (fromFoldable []) targetValuesEvent $ toForeign { target: [{name:"key", valueX:"asdf"}] }
   test "targetFormValuesEvent" do
-    assertEqual (fromFoldable [Tuple "key" "asdf"]) targetFormValuesEvent $ toForeign { target: { form: [ { name:"key", value:"asdf"} ] } }
+    assertEqual
+      (fromFoldable [Tuple "key" (singleton "asdf")])
+      targetFormValuesEvent $ toForeign { target: { form: [ { name:"key", value:"asdf"} ] } }
     assertEqual (fromFoldable []) targetFormValuesEvent $ toForeign { target: {form: [{nameX:"key", value:"asdf"}] } }
     assertEqual (fromFoldable []) targetFormValuesEvent $ toForeign { target: {form: [{name:"key", valueX:"asdf"}] } }
   test "keyCodeEvent" do

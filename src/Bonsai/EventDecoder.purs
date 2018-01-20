@@ -36,14 +36,15 @@ import Prelude
 
 import Bonsai.Types (BrowserEvent, EventDecoder)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
-import Data.Array (catMaybes, range)
+import Data.Array (catMaybes, groupBy, range)
 import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readBoolean, readInt, readNullOrUndefined, readString, fail)
 import Data.Foreign.Index ((!))
-import Data.Maybe (Maybe(..))
 import Data.Map (Map, fromFoldable)
+import Data.Maybe (Maybe(..))
+import Data.NonEmpty (NonEmpty, head)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst, snd)
 
 -- | The simplest possible browser event - the foreign event itself
 identityEvent :: EventDecoder Foreign
@@ -61,12 +62,12 @@ targetCheckedEvent event =
   event ! "target" ! "checked" >>= readBoolean
 
 -- ! Read the names and values of the target element's form.
-targetFormValuesEvent :: EventDecoder (Map String String)
+targetFormValuesEvent :: EventDecoder (Map String (NonEmpty Array String))
 targetFormValuesEvent event =
   event ! "target" ! "form" >>= namesAndValues
 
 -- | Read the names and values of target form, for form events.
-targetValuesEvent :: EventDecoder (Map String String)
+targetValuesEvent :: EventDecoder (Map String (NonEmpty Array String))
 targetValuesEvent event =
   event ! "target" >>= namesAndValues
 
@@ -91,10 +92,25 @@ enterEscapeKeyEvent event = do
 -- | Read names and values from a (fake) foreign array.
 -- |
 -- | This is meant to be used on an array of dom nodes.
-namesAndValues :: EventDecoder (Map String String)
+namesAndValues :: EventDecoder (Map String (NonEmpty Array String))
 namesAndValues arr = do
   len <- arr ! "length" >>= readInt
-  (fromFoldable <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
+  (fromFoldable <<< groupByName <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
+
+  where
+    groupByName :: Array (Tuple String String) -> Array (Tuple String (NonEmpty Array String))
+    groupByName tups =
+      map toTup grouped
+
+      where
+        grouped = groupBy (\a b -> fst a == fst b) tups
+
+        toTup ne =
+          Tuple k vs
+          where
+            k = fst $ head ne
+            vs = map snd ne
+
 
 nameAndValue :: Foreign -> Int -> F (Maybe (Tuple String String))
 nameAndValue arr idx = do
@@ -109,7 +125,7 @@ nameAndValue arr idx = do
       Just "checkbox" -> do
         b <- checked
         if b
-          then Tuple <$> name <*> Just "on"
+          then Tuple <$> name <*> value
           else Nothing
       _ ->
         Tuple <$> name <*> value
