@@ -36,13 +36,13 @@ import Prelude
 
 import Bonsai.Types (BrowserEvent, EventDecoder)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
-import Data.Array (catMaybes, groupBy, range)
+import Data.List (List, catMaybes, groupBy, range)
+import Data.List.NonEmpty as NEL
 import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, ForeignError(..), isNull, isUndefined, readBoolean, readInt, readNullOrUndefined, readString, fail)
 import Data.Foreign.Index ((!))
 import Data.Map (Map, fromFoldable)
 import Data.Maybe (Maybe(..))
-import Data.NonEmpty (NonEmpty, head)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 
@@ -62,12 +62,12 @@ targetCheckedEvent event =
   event ! "target" ! "checked" >>= readBoolean
 
 -- ! Read the names and values of the target element's form.
-targetFormValuesEvent :: EventDecoder (Map String (NonEmpty Array String))
+targetFormValuesEvent :: EventDecoder (Map String (NEL.NonEmptyList String))
 targetFormValuesEvent event =
   event ! "target" ! "form" >>= namesAndValues
 
 -- | Read the names and values of target form, for form events.
-targetValuesEvent :: EventDecoder (Map String (NonEmpty Array String))
+targetValuesEvent :: EventDecoder (Map String (NEL.NonEmptyList String))
 targetValuesEvent event =
   event ! "target" >>= namesAndValues
 
@@ -92,13 +92,13 @@ enterEscapeKeyEvent event = do
 -- | Read names and values from a (fake) foreign array.
 -- |
 -- | This is meant to be used on an array of dom nodes.
-namesAndValues :: EventDecoder (Map String (NonEmpty Array String))
+namesAndValues :: EventDecoder (Map String (NEL.NonEmptyList String))
 namesAndValues arr = do
   len <- arr ! "length" >>= readInt
   (fromFoldable <<< groupByName <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
 
   where
-    groupByName :: Array (Tuple String String) -> Array (Tuple String (NonEmpty Array String))
+    groupByName :: List (Tuple String String) -> List (Tuple String (NEL.NonEmptyList String))
     groupByName tups =
       map toTup grouped
 
@@ -108,7 +108,7 @@ namesAndValues arr = do
         toTup ne =
           Tuple k vs
           where
-            k = fst $ head ne
+            k = fst $ NEL.head ne
             vs = map snd ne
 
 
@@ -122,17 +122,22 @@ nameAndValue arr idx = do
 
   pure $
     case typ of
-      Just "checkbox" -> do
-        b <- checked
-        if b
-          then Tuple <$> name <*> value
-          else Nothing
+      Just "checkbox" ->
+        handleChecked checked name value
+      Just "radio" ->
+        handleChecked checked name value
       _ ->
         Tuple <$> name <*> value
 
   where
     rnu :: forall a. (Foreign -> F a) -> Foreign -> F (Maybe a)
     rnu f a = readNullOrUndefined a >>= traverse f
+
+    handleChecked checked name value = do
+      b <- checked
+      if b
+        then Tuple <$> name <*> value
+        else Nothing
 
 isNullOrUndefined :: Foreign -> Boolean
 isNullOrUndefined value =
