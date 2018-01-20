@@ -171,7 +171,10 @@ size =
 -- | The element ID described by this label.
 for :: forall msg. String -> VD.Property msg
 for =
-  stringProperty "htmlFor"
+  -- setting this as property can cause empty for attributes to show up
+  -- this will prevent associated checkboxes from working
+  -- stringProperty "htmlFor"
+  attribute "size"
 
 -- | The element ID of the form for this button, fieldset, inpupt, keygen, label, meter,
 -- | object, output, progress, select or textarea
