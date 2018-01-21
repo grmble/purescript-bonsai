@@ -13,8 +13,9 @@ import Data.List.NonEmpty as NEL
 import Data.Either (Either(..), isLeft)
 import Data.Foreign (Foreign, toForeign)
 import Data.Map (fromFoldable)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromJust)
 import Data.Tuple (Tuple(..))
+import Partial.Unsafe (unsafePartial)
 import Test.Unit (TestF, suite, test)
 import Test.Unit.Assert as Assert
 
@@ -29,6 +30,35 @@ tests = suite "Bonsai.EventDecoder" do
     -- contained elements without name and value are ignored
     assertEqual (fromFoldable []) targetValuesEvent $ toForeign { target: [ {nameX:"key", value:"asdf"}] }
     assertEqual (fromFoldable []) targetValuesEvent $ toForeign { target: [{name:"key", valueX:"asdf"}] }
+  test "targetValuesEvent/multiple values" do
+    assertEqual
+      (fromFoldable [Tuple "key" (unsafePartial $ fromJust $ NEL.fromFoldable ["v1", "v2"])])
+      targetValuesEvent $
+        toForeign { target: [{name:"key", value:"v1"}, {name:"key", value:"v2"}] }
+  test "targetValuesEvent/ignore checked unless checkbox/radio" do
+    assertEqual
+      (fromFoldable [Tuple "key" (unsafePartial $ fromJust $ NEL.fromFoldable ["v1", "v2"])])
+      targetValuesEvent $
+        toForeign { target:
+          [ {name:"key", value:"v1", checked: true}
+          , {name:"key", value:"v2", checked: false}
+          ] }
+  test "targetValuesEvent/checkbox" do
+    assertEqual
+      (fromFoldable [Tuple "key" (NEL.singleton "v1")])
+      targetValuesEvent $
+        toForeign { target:
+          [ {name:"key", value:"v1", type: "checkbox", checked: true}
+          , {name:"key", value:"v2", type: "checkbox", checked: false}
+          ] }
+  test "targetValuesEvent/radio" do
+    assertEqual
+      (fromFoldable [Tuple "key" (NEL.singleton "v1")])
+      targetValuesEvent $
+        toForeign { target:
+          [ {name:"key", value:"v1", type: "radio", checked: true}
+          , {name:"key", value:"v2", type: "radio", checked: false}
+          ] }
   test "targetFormValuesEvent" do
     assertEqual
       (fromFoldable [Tuple "key" (NEL.singleton "asdf")])
