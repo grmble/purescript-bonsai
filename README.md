@@ -3,6 +3,10 @@
 Functional web programming in Purescript.  Heavily inspired by Elm & using
 the Elm Virtual DOM.
 
+*STATUS*: Functional, but unstable API - the breaking changes are still coming.
+
+It does have:
+
 * Elm's Virtual DOM as backend
 * Event/command system for functional updates to the virtual DOM
 * Integration of event/command system with purecript's Eff and Aff.
