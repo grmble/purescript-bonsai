@@ -21,6 +21,7 @@ module Bonsai.Html.Internal
   , parent
   , keyedElement
   , render
+  , render'
   , withAttribute
   , withStyle
   , withOptionalAttribute
@@ -205,24 +206,33 @@ infixl 4 withOptionalStyle as #!?
 
 -- RENDERING
 
-
 -- | Render the content DSL to a VirtualDom node.
 render :: forall msg. MarkupT msg -> VD.VNode msg
 render elem =
 
-  singleNode $ renderNodes elem
+  singleNode $ render' elem
 
   where
 
     singleNode :: Array (VD.VNode msg) -> VD.VNode msg
     singleNode ns =
-      case fromFoldable ns of
+      case ns of
         [] ->
           VD.node "div" [] []
         [ n ] ->
           n
         x ->
           VD.node "div" [] x
+
+
+
+-- | Render the content DSL to an Array of VirtualDom nodes.
+render' :: forall msg. MarkupT msg -> Array (VD.VNode msg)
+render' elem =
+
+  renderNodes elem
+
+  where
 
     styles2Tups s = map (\st -> Tuple st.name st.value) s
 
