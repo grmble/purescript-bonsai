@@ -27,6 +27,13 @@ classList classes =
     go classes
 
 -- | Set the elements class for CSS.  Also class_
+-- |
+-- | The VirtualDom supports multiple cls/class_/className
+-- | properties and builds a correct attribute by
+-- | separating them with a space.
+-- |
+-- | This is special cased - normarlly, the last value
+-- | of a property wins.
 cls :: forall msg. String -> VD.Property msg
 cls =
   stringProperty "className"
