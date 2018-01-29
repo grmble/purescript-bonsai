@@ -1,12 +1,10 @@
 module Bonsai.Core
   ( Program
-  , UpdateResult
   , ProgramState
   , debugProgram
   , emittingTask
   , emitMessage
   , issueCommand
-  , mapResult
   , plainResult
   , program
   , simpleTask
@@ -50,7 +48,7 @@ import Unsafe.Coerce (unsafeCoerce)
 type Program aff model msg =
   { dbgTiming:: Boolean
   , dbgEvents:: Boolean
-  , updater  :: model -> msg -> UpdateResult aff model msg
+  , updater  :: msg -> model -> Tuple (Cmd aff msg) model
   , renderer :: model -> VNode msg
   , pending  :: Ref (Array msg)
   , state    :: Ref (ProgramState model msg)
@@ -58,32 +56,11 @@ type Program aff model msg =
   , document :: Document
   }
 
--- | An update functions returns a new model and a possibly empty command
-type UpdateResult aff model msg =
-  { model :: model
-  , cmd   :: Cmd aff msg
-  }
 
 -- | Creates an update result with empty command.
-plainResult :: forall aff model msg. model -> UpdateResult aff model msg
+plainResult :: forall aff model msg. model -> Tuple (Cmd aff msg) model
 plainResult model =
-  { model: model
-  , cmd: emptyCommand
-  }
-
--- | Helper to map update results from sub-components
-mapResult
-  :: forall aff model1 msg1 model2 msg2
-  .  (model1 -> model2)
-  -> (msg1 -> msg2)
-  -> UpdateResult aff model1 msg1
-  -> UpdateResult aff model2 msg2
-mapResult modelFn msgFn result =
-  let { model:model2, cmd: cmd } = result
-  in  { model: modelFn model2
-      , cmd: map msgFn cmd
-      }
-
+  Tuple emptyCommand model
 
 
 -- | ProgramState tracks the current state of the model, vnode and
@@ -101,7 +78,7 @@ type ProgramState model msg =
 program
   :: forall eff aff model msg
   .  ElementId
-  -> (model -> msg -> UpdateResult aff model msg)
+  -> (msg -> model -> Tuple (Cmd aff msg) model)
   -> (model -> VNode msg)
   -> model
   -> Window
@@ -113,7 +90,7 @@ program containerId updater renderer model =
 debugProgram
   :: forall eff aff model msg
   .  ElementId
-  -> (model -> msg -> UpdateResult aff model msg)
+  -> (msg -> model -> Tuple (Cmd aff msg) model)
   -> (model -> VNode msg)
   -> model
   -> Boolean
@@ -339,7 +316,7 @@ updateModel env = do
     applyMessages (Tuple cmds model) msgs = unsafePartial $ do
       let msg = AP.head msgs
       debugJsonObj env.dbgEvents "message event:" msg
-      let {model:model2, cmd:cmd} = env.updater model msg
+      let Tuple cmd model2 = env.updater msg model
       applyMessages (Tuple (Array.snoc cmds cmd) model2) $ AP.tail msgs
 
 -- | Redraw the changed model

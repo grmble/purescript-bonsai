@@ -3,7 +3,7 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, ElementId(..), UpdateResult, Program, elementById, emitMessage, emittingTask, issueCommand, plainResult, program, pureCommand, simpleTask, unitTask, window)
+import Bonsai (BONSAI, Cmd, ElementId(..), Program, elementById, emitMessage, emittingTask, issueCommand, plainResult, program, pureCommand, simpleTask, unitTask, window)
 import Bonsai.DOM.Primitive (textContent)
 import Bonsai.Html (button, div_, render, span, text, (!))
 import Bonsai.Html.Attributes (id_)
@@ -17,6 +17,7 @@ import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Free (Free)
 import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
 import Test.JSDOM (jsdomWindow)
 import Test.Unit (TestF, suite, test)
@@ -35,8 +36,8 @@ data Msg
   | Boo
   | TaskResult
 
-update :: forall eff. Model -> Msg -> UpdateResult (console::CONSOLE,clienteff::CLIENTEFF|eff) Model Msg
-update model msg =
+update :: forall eff. Msg -> Model -> Tuple (Cmd (console::CONSOLE,clienteff::CLIENTEFF|eff) Msg) Model
+update msg model =
   case msg of
     Inc ->
       plainResult $ model + 1
@@ -44,13 +45,13 @@ update model msg =
       plainResult $ model - 1
     -- test compilation/types for some ways of starting tasks
     Foo ->
-      { model, cmd: simpleTask simpleAff }
+      Tuple (simpleTask simpleAff) model
     Bar ->
-      { model, cmd: emittingTask emittingAff }
+      Tuple (emittingTask emittingAff) model
     Baz ->
-      { model, cmd: emittingTask pureAff }
+      Tuple (emittingTask pureAff) model
     Boo ->
-      { model, cmd: unitTask consoleAff }
+      Tuple (unitTask consoleAff) model
     TaskResult ->
       plainResult model
 
