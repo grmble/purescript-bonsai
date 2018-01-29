@@ -10,6 +10,7 @@ module Bonsai.Core
   , plainResult
   , program
   , simpleTask
+  , unitTask
   )
 where
 
@@ -295,6 +296,11 @@ emittingTask
   -> Cmd aff msg
 emittingTask = TaskCmd
 
+
+-- | An effectful task without return value - e.g. write to storage, ...
+unitTask :: forall aff msg. Aff aff Unit -> Cmd aff msg
+unitTask aff =
+  TaskCmd $ \_ -> aff
 
 
 -- | Update from queued messages

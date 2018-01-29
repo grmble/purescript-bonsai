@@ -3,7 +3,7 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, ElementId(..), UpdateResult, Program, elementById, emitMessage, emittingTask, issueCommand, plainResult, program, pureCommand, simpleTask, window)
+import Bonsai (BONSAI, ElementId(..), UpdateResult, Program, elementById, emitMessage, emittingTask, issueCommand, plainResult, program, pureCommand, simpleTask, unitTask, window)
 import Bonsai.DOM.Primitive (textContent)
 import Bonsai.Html (button, div_, render, span, text, (!))
 import Bonsai.Html.Attributes (id_)
@@ -50,7 +50,7 @@ update model msg =
     Baz ->
       { model, cmd: emittingTask pureAff }
     Boo ->
-      { model, cmd: emittingTask consoleAff }
+      { model, cmd: unitTask consoleAff }
     TaskResult ->
       plainResult model
 
@@ -80,10 +80,8 @@ pureAff ctx = do
   emitMessage ctx TaskResult
   pure unit
 
-consoleAff :: forall eff
-  .  TaskContext (console::CONSOLE|eff) Msg
-  -> Aff (console::CONSOLE|eff) Unit
-consoleAff ctx = do
+consoleAff :: forall eff.  Aff (console::CONSOLE|eff) Unit
+consoleAff = do
   liftEff $ log "Hello, world"
   pure unit
 
@@ -123,6 +121,10 @@ tests =
       liftEff $ issueCommand env $ pureCommand Inc
       textAfterInc <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "1" textAfterInc
+
+
+      -- liftEff $ issueCommand env $ pureCommand Boo
+      -- observe output
 
       {--
       -- XXX: does not work - can't get it the event to fire

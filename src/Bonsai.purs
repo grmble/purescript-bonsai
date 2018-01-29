@@ -8,6 +8,6 @@ module Bonsai
   )
 where
 
-import Bonsai.Core (Program, UpdateResult, ProgramState, debugProgram, emitMessage, emittingTask, issueCommand, mapResult, plainResult, program, simpleTask)
+import Bonsai.Core (Program, UpdateResult, ProgramState, debugProgram, emitMessage, emittingTask, issueCommand, mapResult, plainResult, program, simpleTask, unitTask)
 import Bonsai.DOM (ElementId(..), Element, document, elementById, window)
 import Bonsai.Types (BONSAI, Cmd(..), Document, EventDecoder, Window, pureCommand, emptyCommand)
