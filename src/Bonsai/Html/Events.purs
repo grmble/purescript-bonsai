@@ -74,5 +74,5 @@ onKeyEnterEscape enterFn escFn =
 -- | Emit a command on form submit.
 onSubmit :: forall msg. msg -> Property msg
 onSubmit msg =
-  onWithOptions "submit" preventDefaultStopPropagation
+  onWithOptions preventDefaultStopPropagation "submit"
     (\_ -> Right $ pureCommand msg)

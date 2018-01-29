@@ -161,9 +161,9 @@ foreign import onFn3
 
 
 -- | Same as `on` but you can set a few options.
-onWithOptions :: forall aff msg. String -> Options -> CmdDecoder aff msg -> Property msg
-onWithOptions =
-  runFn3 onFn3
+onWithOptions :: forall aff msg. Options -> String -> CmdDecoder aff msg -> Property msg
+onWithOptions opts str =
+  runFn3 onFn3 str opts
 
 
 
