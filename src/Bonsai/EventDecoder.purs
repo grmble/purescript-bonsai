@@ -34,7 +34,6 @@ where
 
 import Prelude
 
-import Bonsai.Types (BrowserEvent, EventDecoder)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
 import Data.List (List, catMaybes, groupBy, range)
 import Data.List.NonEmpty as NEL
@@ -47,36 +46,36 @@ import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 
 -- | The simplest possible browser event - the foreign event itself
-identityEvent :: EventDecoder Foreign
+identityEvent :: Foreign -> F Foreign
 identityEvent =
   pure
 
 -- | Read the value of the target input element
-targetValueEvent :: EventDecoder String
+targetValueEvent :: Foreign -> F String
 targetValueEvent event =
   event ! "target" ! "value" >>= readString
 
 -- | Read the value of target element's checked property
-targetCheckedEvent :: EventDecoder Boolean
+targetCheckedEvent :: Foreign -> F Boolean
 targetCheckedEvent event =
   event ! "target" ! "checked" >>= readBoolean
 
 -- ! Read the names and values of the target element's form.
-targetFormValuesEvent :: EventDecoder (Map String (NEL.NonEmptyList String))
+targetFormValuesEvent :: Foreign -> F (Map String (NEL.NonEmptyList String))
 targetFormValuesEvent event =
   event ! "target" ! "form" >>= namesAndValues
 
 -- | Read the names and values of target form, for form events.
-targetValuesEvent :: EventDecoder (Map String (NEL.NonEmptyList String))
+targetValuesEvent :: Foreign -> F (Map String (NEL.NonEmptyList String))
 targetValuesEvent event =
   event ! "target" >>= namesAndValues
 
-keyCodeEvent :: EventDecoder Int
+keyCodeEvent :: Foreign -> F Int
 keyCodeEvent event =
   event ! "keyCode" >>= readInt
 
 -- | Event decoding helper: Right for ENTER, Left for ESC
-enterEscapeKeyEvent :: EventDecoder (Maybe (Either String String))
+enterEscapeKeyEvent :: Foreign -> F (Maybe (Either String String))
 enterEscapeKeyEvent event = do
   kc    <- keyCodeEvent event
   value <- targetValueEvent event
@@ -92,7 +91,7 @@ enterEscapeKeyEvent event = do
 -- | Read names and values from a (fake) foreign array.
 -- |
 -- | This is meant to be used on an array of dom nodes.
-namesAndValues :: EventDecoder (Map String (NEL.NonEmptyList String))
+namesAndValues :: Foreign -> F (Map String (NEL.NonEmptyList String))
 namesAndValues arr = do
   len <- arr ! "length" >>= readInt
   (fromFoldable <<< groupByName <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
@@ -146,7 +145,7 @@ isNullOrUndefined value =
 -- | Event decoder returns unit or fails
 -- |
 -- | hack or no hack?
-ignoreEscapeEvent :: Foreign -> BrowserEvent Unit
+ignoreEscapeEvent :: Foreign -> F Unit
 ignoreEscapeEvent event = do
   keyCode <- event ! "keyCode" >>= readInt
   if keyCode == 27 -- ESC
@@ -155,7 +154,7 @@ ignoreEscapeEvent event = do
 
 
 -- | Event decoder decodes the value of a data attribute
-dataAttributeEvent :: String -> EventDecoder String
+dataAttributeEvent :: String -> Foreign -> F String
 dataAttributeEvent name event = do
   target <- event ! "target"
   go target

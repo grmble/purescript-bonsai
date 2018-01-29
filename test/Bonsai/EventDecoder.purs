@@ -5,13 +5,12 @@ where
 import Prelude
 
 import Bonsai.EventDecoder (enterEscapeKeyEvent, keyCodeEvent, targetFormValuesEvent, targetValueEvent, targetValuesEvent)
-import Bonsai.Types (EventDecoder)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Free (Free)
-import Data.List.NonEmpty as NEL
 import Data.Either (Either(..), isLeft)
-import Data.Foreign (Foreign, toForeign)
+import Data.Foreign (F, Foreign, toForeign)
+import Data.List.NonEmpty as NEL
 import Data.Map (fromFoldable)
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Tuple (Tuple(..))
@@ -76,10 +75,10 @@ tests = suite "Bonsai.EventDecoder" do
     assertLeft "no value" enterEscapeKeyEvent $ toForeign { target: { valueX: "asdf" }, keyCode: 13 }
 
 
-assertLeft :: forall msg eff. String -> EventDecoder msg -> Foreign -> Aff eff Unit
+assertLeft :: forall msg eff. String -> (Foreign -> F msg) -> Foreign -> Aff eff Unit
 assertLeft msg decFn event =
   Assert.assert msg $ isLeft $ runExcept $ decFn event
 
-assertEqual :: forall msg eff. Eq msg => Show msg => msg -> EventDecoder msg -> Foreign -> Aff eff Unit
+assertEqual :: forall msg eff. Eq msg => Show msg => msg -> (Foreign -> F msg) -> Foreign -> Aff eff Unit
 assertEqual msg decFn event =
   Assert.equal (Right msg) $ runExcept $ decFn event

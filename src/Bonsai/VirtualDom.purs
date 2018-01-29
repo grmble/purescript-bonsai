@@ -26,11 +26,11 @@ where
 import Prelude
 
 import Bonsai.DOM.Primitive (Element)
-import Bonsai.Types (BONSAI, Cmd, CmdDecoder, Document, Emitter)
+import Bonsai.Types (BONSAI, Cmd, Document)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (Error)
 import Data.Either (Either)
-import Data.Foreign (Foreign, toForeign)
+import Data.Foreign (F, Foreign, toForeign)
 import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn6, runFn2, runFn3, runFn4, runFn6)
 import Data.Tuple (Tuple)
 
@@ -143,25 +143,28 @@ foreign import style :: forall msg. Array (Tuple String String) -> Property msg
 
 -- EVENTS
 
+type EventHandler aff msg =
+  Foreign -> F (Cmd aff msg)
+
 -- internal concrete alias so we can get it into javascript
-type CmdDecoderMap eff a b = (a -> b) -> CmdDecoder eff a -> CmdDecoder eff b
-cmdDecoderMap :: forall eff a b. CmdDecoderMap eff a b
-cmdDecoderMap fn decoder =
-  map (map (map fn)) decoder
+type EventHandlerMap eff a b = (a -> b) -> EventHandler eff a -> EventHandler eff b
+eventHandlerMap :: forall eff a b. EventHandlerMap eff a b
+eventHandlerMap fn =
+  map (map (map fn))
 
 
 -- | Create a custom event listener.
-on :: forall eff msg. String -> (CmdDecoder eff msg) -> Property msg
+on :: forall eff msg. String -> (Foreign -> F (Cmd eff msg)) -> Property msg
 on eventName decoder =
   runFn3 onFn3 eventName defaultOptions decoder
 
 foreign import onFn3
   :: forall eff msg
-  .  Fn3 String Options (CmdDecoder eff msg) (Property msg)
+  .  Fn3 String Options (Foreign -> F (Cmd eff msg)) (Property msg)
 
 
 -- | Same as `on` but you can set a few options.
-onWithOptions :: forall aff msg. Options -> String -> CmdDecoder aff msg -> Property msg
+onWithOptions :: forall eff msg. Options -> String -> (Foreign -> F (Cmd eff msg)) -> Property msg
 onWithOptions opts str =
   runFn3 onFn3 str opts
 
@@ -251,17 +254,20 @@ foreign import keyedNodeFn3 ::
 -- | Initial step - the whole point in a VDom is the diffing
 -- | and patching.  So after rendering once, diff and applyPatches
 -- | should be used.
+-- |
+-- | If the emitting helper function returns true, the event
+-- | will be logged to the console.
 render
   :: forall aff msg
   .  Document
-  -> Emitter aff msg
+  -> (F (Cmd aff msg) -> Eff aff Boolean)
   -> VNode msg
   -> Element
 render doc = runFn4 renderFn4 doc cmdMap
 
 foreign import renderFn4
   :: forall aff a msg
-  .  Fn4 Document (CmdMap aff a msg) (Emitter aff msg) (VNode msg) Element
+  .  Fn4 Document (CmdMap aff a msg) (F (Cmd aff msg) -> Eff aff Boolean) (VNode msg) Element
 
 -- internal concrete alias so we can get it into javascript
 type CmdMap aff a b = (a -> b) -> (Either Error (Cmd aff a)) -> (Either Error (Cmd aff b))
@@ -287,7 +293,7 @@ foreign import diffFn2
 applyPatches
   :: forall eff aff msg
   .  Document
-  -> Emitter aff msg
+  -> (F (Cmd aff msg) -> Eff aff Boolean)
   -> Element
   -> VNode msg
   -> Patch msg
@@ -297,4 +303,4 @@ applyPatches doc emitter domNode oldVirtualNode patches =
 
 foreign import applyPatchesFn6
   :: forall aff a msg
-  .  Fn6 Document (CmdMap aff a msg) (Emitter aff msg) Element (VNode msg) (Patch msg) Element
+  .  Fn6 Document (CmdMap aff a msg) (F (Cmd aff msg) -> Eff aff Boolean) Element (VNode msg) (Patch msg) Element

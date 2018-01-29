@@ -2,15 +2,10 @@
 -- | that are used in the Core and VirtualDom modules.
 module Bonsai.Types
   ( BONSAI
-  , BrowserEvent
   , Cmd(..)
-  , CmdDecoder
   , Document(..)
-  , Emitter
-  , EventDecoder
   , TaskContext
   , Window(..)
-  , f2cmd
   , emptyCommand
   , pureCommand
   )
@@ -21,11 +16,7 @@ import Prelude
 import Control.Monad.Aff (Aff, Fiber)
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Eff (Eff, kind Effect)
-import Control.Monad.Eff.Exception (Error, error)
-import Control.Monad.Except (runExcept)
-import Data.Array (intercalate)
-import Data.Either (Either(..))
-import Data.Foreign (F, Foreign, renderForeignError)
+import Data.Foreign (Foreign)
 
 
 -- | Effect for public types
@@ -97,48 +88,6 @@ type TaskContext eff msg =
   , fiber :: AVar (Fiber eff Unit)
   , document :: Document
   }
-
--- | A BrowserEvent is simply a decoded foreign
--- |
--- | This is inherently composable - it's a full monad.
-type BrowserEvent msg = F msg
-
--- | A EventDecoder decodes a foreign to a BrowserEvent
-type EventDecoder msg =
-  (Foreign -> BrowserEvent msg)
-
--- | And finally, a Command Decoder turns a foreign into a command
--- |
--- | The CmdDecoder will be implemented using EventDecoders internally.
-type CmdDecoder aff msg =
-  (Foreign -> Either Error (Cmd aff msg))
-
--- | Emitters will get the Cmd into the Bonsai event loop.
--- |
--- | The javascript side has little knowlege about
--- | the internal structure of the purescript types,
--- | so an emitting function is provided that takes
--- | care of all that.
--- |
--- | On error, the emitter returns true to signal to javascript
--- | that the originating event should be logged to the console.
-type Emitter aff msg
-  =  Either Error (Cmd aff msg)
-  -> Eff aff Boolean
-
-
--- | Helper to turn an F into emittable (Either Error Cmd)
-f2cmd
-  :: forall a b eff
-  .  (a -> Cmd eff b)
-  -> F a
-  -> Either Error (Cmd eff b)
-f2cmd cmdFn fa =
-  case runExcept fa of
-    Left errs ->
-      Left $ error $ intercalate ", " $ renderForeignError <$> errs
-    Right a ->
-      Right $ cmdFn a
 
 -- | Produces an empty command.
 emptyCommand :: forall aff msg. Cmd aff msg

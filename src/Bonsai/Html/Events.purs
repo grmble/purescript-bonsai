@@ -18,7 +18,7 @@ where
 import Prelude
 
 import Bonsai.EventDecoder (enterEscapeKeyEvent, targetCheckedEvent, targetValueEvent)
-import Bonsai.Types (emptyCommand, f2cmd, pureCommand)
+import Bonsai.Types (emptyCommand, pureCommand)
 import Bonsai.VirtualDom (Property, Options, on, onWithOptions)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
@@ -34,23 +34,23 @@ preventDefaultStopPropagation =
 -- | Suboptimal helper for the input event.
 onInput :: forall msg. (String -> msg) -> Property msg
 onInput f =
-  on "input" (f2cmd pureCommand <<< map f <<< targetValueEvent)
+  on "input" (map (map (pureCommand <<< f)) targetValueEvent)
 
 -- | Suboptimal helper for boolean (checkbox) input
 onCheckedChange :: forall msg. (Boolean -> msg) -> Property msg
 onCheckedChange f =
-  on "change" (f2cmd pureCommand <<< map f <<< targetCheckedEvent)
+  on "change" (map (map (pureCommand <<< f)) targetCheckedEvent)
 
 -- | Event listener property for the click event.
 onClick :: forall msg. msg -> Property msg
 onClick msg =
-  on "click" \_ -> Right $ pureCommand msg
+  on "click" (const $ pure $ pureCommand msg)
 
 
 -- | Emit commands on enter key presses
 onKeyEnter :: forall msg. (String -> msg) -> Property msg
 onKeyEnter cmdFn =
-  on "keydown" (f2cmd convert <<< enterEscapeKeyEvent)
+  on "keydown" (map (map convert) enterEscapeKeyEvent)
   where
     convert Nothing =
       emptyCommand
@@ -62,7 +62,7 @@ onKeyEnter cmdFn =
 -- | Emit commands on enter or escape key presses
 onKeyEnterEscape :: forall msg. (String -> msg) -> (String -> msg) -> Property msg
 onKeyEnterEscape enterFn escFn =
-  on "keydown" (f2cmd convert <<< enterEscapeKeyEvent)
+  on "keydown" (map (map convert) enterEscapeKeyEvent)
   where
     convert Nothing =
       emptyCommand
@@ -75,4 +75,4 @@ onKeyEnterEscape enterFn escFn =
 onSubmit :: forall msg. msg -> Property msg
 onSubmit msg =
   onWithOptions preventDefaultStopPropagation "submit"
-    (\_ -> Right $ pureCommand msg)
+    (const $ pure $ pureCommand msg)

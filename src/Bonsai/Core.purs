@@ -18,7 +18,7 @@ import Prelude
 
 import Bonsai.DOM.Primitive (Element, ElementId(..), appendChild, clearElement, document, elementById, requestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
-import Bonsai.Types (BONSAI, Cmd(..), Document, Emitter, TaskContext, Window, emptyCommand)
+import Bonsai.Types (BONSAI, Cmd(..), Document, TaskContext, Window, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (Aff, joinFiber, runAff_, suspendAff)
 import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar)
@@ -28,10 +28,12 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (EXCEPTION, Error, error, throwException)
 import Control.Monad.Eff.Ref (REF, Ref, modifyRef, modifyRef', newRef, readRef, writeRef)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
-import Data.Array (null, snoc)
-import Data.Array.Partial (head, tail)
+import Control.Monad.Except (runExcept)
+import Data.Array as Array
+import Data.Array.Partial as AP
 import Data.Either (Either(..))
-import Data.Foldable (for_)
+import Data.Foldable (for_, intercalate)
+import Data.Foreign (F, renderForeignError)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
@@ -153,7 +155,7 @@ queueMessages
   -> Array msg
   -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 queueMessages env msgs =
-  if null msgs
+  if Array.null msgs
     then pure unit
     else do
       debugJsonObj env.dbgEvents "queue messages:" msgs
@@ -176,7 +178,7 @@ emitSuccess
   -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 emitSuccess env msgs = do
     queueMessages env msgs
-    if null msgs
+    if Array.null msgs
       then pure unit
       else updateAndRedraw env
 
@@ -203,7 +205,7 @@ queueCommand env cmd =
       unsafeCoerceAff $ joinFiber fib
     queueMs msgs = do
       queueMessages env msgs
-      pure $ not $ null msgs
+      pure $ not $ Array.null msgs
     emitEither e =
       case e of
         Left err -> emitError err
@@ -252,14 +254,17 @@ taskContext env = do
 -- | Cmd emitter for the VirtualDom
 -- |
 -- | This is passed into the virtual dom js and calls our callbacks.
+-- |
+-- | True means: log the original event
 emitter
   :: forall eff model msg
   .  Program eff model msg
-  -> Emitter (avar::AVAR,bonsai::BONSAI,ref::REF|eff) msg
-emitter env ecmd =
-  case ecmd of
+  -> F (Cmd (avar::AVAR,bonsai::BONSAI,ref::REF|eff) msg)
+  -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Boolean
+emitter env fcmd =
+  case runExcept fcmd of
     Left err ->
-      emitError err *> pure true
+      emitError (error $ intercalate ", " $ renderForeignError <$> err) *> pure true
     Right cmd -> do
       mustUpdate <- queueCommand env (unsafeCoerceCmd cmd)
       if mustUpdate
@@ -314,7 +319,7 @@ updateModel
 updateModel env = do
   msgs <- liftEff $ modifyRef' env.pending $ \ms -> {state: [], value: ms}
 
-  if null msgs
+  if Array.null msgs
     then pure unit
     else do
 
@@ -332,10 +337,10 @@ updateModel env = do
   where
     applyMessages (Tuple cmds model) [] = pure $ Tuple cmds model
     applyMessages (Tuple cmds model) msgs = unsafePartial $ do
-      let msg = head msgs
+      let msg = AP.head msgs
       debugJsonObj env.dbgEvents "message event:" msg
       let {model:model2, cmd:cmd} = env.updater model msg
-      applyMessages (Tuple (snoc cmds cmd) model2) $ tail msgs
+      applyMessages (Tuple (Array.snoc cmds cmd) model2) $ AP.tail msgs
 
 -- | Redraw the changed model
 redrawModel
