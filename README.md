@@ -38,13 +38,14 @@ Edit src/Main.purs
 ```purescript
 module Main where
 
-import Prelude
+import Prelude hiding (div)
 
 import Bonsai
 import Bonsai.Html
 import Bonsai.Html.Attributes
 import Bonsai.Html.Events
 import Data.Maybe
+import Data.Tuple
 
 type Model = Int
 
@@ -52,8 +53,8 @@ data Msg
   = Inc
   | Dec
 
-update :: forall eff. Model -> Msg -> UpdateResult eff Model Msg
-update model msg = plainResult $
+update :: forall eff. Msg -> Model -> Tuple (Cmd eff Msg) Model
+update msg model = plainResult $
   case msg of
     Inc ->
       model + 1
@@ -62,13 +63,16 @@ update model msg = plainResult $
 
 view :: Model -> VNode Msg
 view model =
-  render $ div_ $ do
-    text $ show model
-    button ! onClick Inc $ text "+"
-    button ! onClick Dec $ text "-"
 
-main = do
-  _ <- window >>= debugProgram (ElementId "main") update view 0 true true
+  render $
+    div ! cls "counter" $ do
+      text $ show model
+      button ! cls "minus" ! onClick Inc $ do text "+"
+      button ! cls "plus" ! onClick Dec $ do text "-"
+
+main =
+  ( window >>=
+    program (ElementId "main") update view 0) *>
   pure unit
 ```
 
@@ -81,7 +85,7 @@ Add a index.html in your project root
     <meta charset="utf-8"/>
   </head>
   <body style="padding: 2em;">
-    <div id="main"></div>
+    <div id="main">Loading ...</div>
   </body>
   <script type='text/javascript' src='app.js'></script>
 </html>
