@@ -29,19 +29,6 @@ foreign import data BONSAI :: Effect
 -- | the messages that will be emitted.
 -- | The asynchronous Task gets an emitter function
 -- | that it can use to emit messages at will.
--- |
--- | There is currently no effectful synchronous command -
--- | there used to be, but it did not turn out very useful
--- | except in dumbed down examples.
--- |
--- | There could be a helper function that expresses simple
--- | effectful commands as Tasks though.
--- |
--- | There used to be a helper type for TaskContext -> Aff but
--- | for some reason it did not unify in user code.
--- | So the recommendation is to produce the command,
--- | not the function with complicated signature that goes
--- | inside a TaskCmd.
 data Cmd eff msg
   = Cmd (Array msg)
   | TaskCmd (TaskContext eff msg -> Aff eff Unit)

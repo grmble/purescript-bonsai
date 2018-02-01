@@ -1,10 +1,13 @@
 module Bonsai.Core
-  ( Program
+  ( DebugOptions
+  , Program
   , ProgramState
   , debugProgram
-  , emittingTask
   , emitMessage
+  , emittingTask
+  , fullDebug
   , issueCommand
+  , noDebug
   , plainResult
   , program
   , simpleTask
@@ -46,14 +49,44 @@ import Unsafe.Coerce (unsafeCoerce)
 -- | commands, they will then be applied
 -- | in the main event loop.
 type Program aff model msg =
-  { dbgTiming:: Boolean
-  , dbgEvents:: Boolean
+  { dbg      :: DebugOptions
   , updater  :: msg -> model -> Tuple (Cmd aff msg) model
   , renderer :: model -> VNode msg
   , pending  :: Ref (Array msg)
   , state    :: Ref (ProgramState model msg)
   , window   :: Window
   , document :: Document
+  }
+
+-- | Debug options
+-- |
+-- | Use noDebug or fullDebug and toggle your values.
+-- |
+-- | Otherwise new debug options will break your program.
+-- |
+-- | * dbgTiming: log render/diff/apply times
+-- | * dbgEvents: log queued events (and the underlying event object)
+-- | * dbgPatch: log the virtual dom patch - useful if dbgTimings are slow
+type DebugOptions =
+  { timing :: Boolean
+  , events :: Boolean
+  , patch :: Boolean
+  }
+
+-- | full debug options
+fullDebug :: DebugOptions
+fullDebug =
+  { timing: true
+  , events: true
+  , patch: true
+  }
+
+-- | no debug options
+noDebug :: DebugOptions
+noDebug =
+  { timing: false
+  , events: false
+  , patch: false
   }
 
 
@@ -84,7 +117,7 @@ program
   -> Window
   -> Eff (bonsai::BONSAI,exception::EXCEPTION|eff) (Program aff model msg)
 program containerId updater renderer model =
-  debugProgram containerId updater renderer model false false
+  debugProgram containerId updater renderer model noDebug
 
 
 debugProgram
@@ -93,11 +126,10 @@ debugProgram
   -> (msg -> model -> Tuple (Cmd aff msg) model)
   -> (model -> VNode msg)
   -> model
-  -> Boolean
-  -> Boolean
+  -> DebugOptions
   -> Window
   -> Eff (bonsai::BONSAI,exception::EXCEPTION|eff) (Program aff model msg)
-debugProgram containerId@(ElementId idStr) updater renderer model dbgTiming dbgEvents _window =
+debugProgram containerId@(ElementId idStr) updater renderer model dbg _window =
   unsafeCoerceEff $ do
     _document <- document _window
     element   <- elementById containerId _document
@@ -110,7 +142,7 @@ debugProgram containerId@(ElementId idStr) updater renderer model dbgTiming dbgE
         let vnode = renderer model
         fakeState <- newRef { model: model, vnode: vnode, dnode: container, dirty: false }
         pending   <- newRef []
-        let env = { dbgTiming, dbgEvents, updater: updater
+        let env = { dbg, updater: updater
                   , renderer: renderer, pending: pending, state: fakeState
                   , window: _window, document: _document
                   }
@@ -119,7 +151,7 @@ debugProgram containerId@(ElementId idStr) updater renderer model dbgTiming dbgE
         let dnode = render env.document (emitter env) vnode
         clearElement container
         _ <- appendChild dnode container
-        debugTiming env.dbgTiming "render/appendChild" ts
+        debugTiming env.dbg.timing "render/appendChild" ts
 
         modifyRef fakeState \state -> state { dnode = dnode }
         pure env
@@ -135,7 +167,7 @@ queueMessages env msgs =
   if Array.null msgs
     then pure unit
     else do
-      debugJsonObj env.dbgEvents "queue messages:" msgs
+      debugJsonObj env.dbg.events "queue messages:" msgs
       modifyRef env.pending \pending -> pending <> msgs
       pure unit
 
@@ -240,13 +272,13 @@ emitter
   -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Boolean
 emitter env fcmd =
   case runExcept fcmd of
-    Left err ->
+    Left err -> do
       emitError (error $ intercalate ", " $ renderForeignError <$> err) *> pure true
     Right cmd -> do
       mustUpdate <- queueCommand env (unsafeCoerceCmd cmd)
       if mustUpdate
-        then updateAndRedraw env *> pure false
-        else pure false
+        then updateAndRedraw env *> pure env.dbg.events
+        else pure env.dbg.events
 
 -- | Emit helper for Tasks.
 -- |
@@ -315,7 +347,6 @@ updateModel env = do
     applyMessages (Tuple cmds model) [] = pure $ Tuple cmds model
     applyMessages (Tuple cmds model) msgs = unsafePartial $ do
       let msg = AP.head msgs
-      debugJsonObj env.dbgEvents "message event:" msg
       let Tuple cmd model2 = env.updater msg model
       applyMessages (Tuple (Array.snoc cmds cmd) model2) $ AP.tail msgs
 
@@ -328,11 +359,16 @@ redrawModel env = do
   state <- liftEff $ readRef env.state
   if state.dirty
     then do
-      ts <- startTiming
+      ts1 <- startTiming
       let vnode2 = env.renderer state.model
+      debugTiming env.dbg.timing "render" ts1
+
+      ts2 <- startTiming
       let patch = diff state.vnode vnode2
       dnode2 <- liftEff $ applyPatches env.document (emitter env) state.dnode state.vnode patch
-      debugTiming env.dbgTiming "render/diff/applyPatches" ts
+      debugTiming env.dbg.timing "diff/applyPatches" ts2
+
+      debugJsonObj env.dbg.patch "patch:" patch
       writeRef env.state (state {vnode = vnode2, dnode = dnode2, dirty = false})
     else
       pure unit

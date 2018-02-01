@@ -23,6 +23,7 @@ module Bonsai.Html.Internal
   , render
   , render'
   , withAttribute
+  , withAttributes
   , withStyle
   , withOptionalAttribute
   , withOptionalStyle
@@ -143,6 +144,11 @@ class HasAttribute a b | a -> b where
   -- | Add an attribute to element node
   withAttribute :: a -> b -> a
 
+  -- | Append a list of attributes to the element node
+  -- |
+  -- | Performce helper for code that produces Markup
+  withAttributes :: a -> CatList b -> a
+
 class HasStyle a where
   -- | Add a style to an element node
   withStyle :: a -> Style -> a
@@ -153,6 +159,12 @@ instance hasAttributeMarkup :: HasAttribute (Free (MarkupF msg) Unit) (VD.Proper
     where
       go :: MarkupF msg ~> MarkupF msg
       go (ElementF rec x) = ElementF (rec { attribs = snoc rec.attribs prop }) x
+      go x = x
+  withAttributes elem props =
+    hoistFree go elem
+    where
+      go :: MarkupF msg ~> MarkupF msg
+      go (ElementF rec x) = ElementF (rec { attribs = rec.attribs <> props }) x
       go x = x
 
 instance hasStyleMarkup :: HasStyle (Free (MarkupF msg) Unit) where
@@ -169,6 +181,8 @@ instance hasStyleMarkup :: HasStyle (Free (MarkupF msg) Unit) where
 instance hasAttributeMarkupF :: HasAttribute (Free (MarkupF msg) Unit -> Free (MarkupF msg) Unit) (VD.Property msg) where
   withAttribute efn prop elem =
     withAttribute (efn elem) prop
+  withAttributes efn props elem =
+    withAttributes (efn elem) props
 
 instance hasStyleMarkupF :: HasStyle (Free (MarkupF msg) Unit -> Free (MarkupF msg) Unit) where
   withStyle efn prop elem =
