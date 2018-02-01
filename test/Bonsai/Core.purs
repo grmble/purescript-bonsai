@@ -136,3 +136,19 @@ tests =
       textAfterClick <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "2" textAfterInc
       --}
+
+    test "cmd monoid" do
+      env <- liftEff $
+        jsdomWindow """<html><body id="main"></body></html>""" >>=
+        program (ElementId "main") update view 0
+      initialText <- elementTextAfterRender env (ElementId "counter")
+      Assert.equal "0" initialText
+
+      let cmd = pureCommand Inc <> unitTask (delay (Milliseconds 500.0)) <> pureCommand Inc
+      liftEff $ issueCommand env cmd
+      textAfterInc <- elementTextAfterRender env (ElementId "counter")
+      Assert.equal "1" textAfterInc
+
+      delay (Milliseconds 500.0)
+      textAfterRest <- elementTextAfterRender env (ElementId "counter")
+      Assert.equal "2" textAfterRest

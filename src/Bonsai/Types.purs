@@ -6,6 +6,7 @@ module Bonsai.Types
   , Document(..)
   , TaskContext
   , Window(..)
+  , emitMessage
   , emptyCommand
   , pureCommand
   )
@@ -15,8 +16,12 @@ import Prelude
 
 import Control.Monad.Aff (Aff, Fiber)
 import Control.Monad.Aff.AVar (AVar)
+import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff, kind Effect)
+import Control.Monad.Eff.Class (liftEff)
+import Data.Foldable (for_)
 import Data.Foreign (Foreign)
+import Data.Monoid (class Monoid)
 
 
 -- | Effect for public types
@@ -55,6 +60,39 @@ mapTask f ta contextB =
       contextB { emitter = emitA }
   in
     ta contextA
+
+-- | Emit helper for Tasks.
+-- |
+-- | In an emitting task, use this function to emit messages.
+emitMessage :: forall aff msg. TaskContext aff msg -> msg -> Aff aff Unit
+emitMessage ctx msg =
+  unsafeCoerceAff $ liftEff $ ctx.emitter msg
+
+
+-- | Semigroup instance for Cmd
+-- |
+-- | aside from the obvious (combining commands with <>)
+-- | this will also make (Tuple (Cmd eff) Model)
+-- | an applicative functor (= the results of update functions)
+instance semigroupCmd :: Semigroup (Cmd eff msg) where
+  append (Cmd m1) (Cmd m2) =
+    Cmd (m1 <> m2)
+  append (Cmd m) (TaskCmd task) =
+    TaskCmd \ctx -> do
+      for_ m (emitMessage ctx)
+      task ctx
+  append (TaskCmd task) (Cmd m) =
+    TaskCmd \ctx -> do
+      task ctx
+      for_ m (emitMessage ctx)
+  append (TaskCmd t1) (TaskCmd t2) =
+    TaskCmd \ctx -> do
+      t1 ctx
+      t2 ctx
+
+
+instance monoidCmd :: Monoid (Cmd eff msg) where
+  mempty = Cmd []
 
 
 -- | The type for the global javascript document

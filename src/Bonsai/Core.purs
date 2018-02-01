@@ -3,7 +3,6 @@ module Bonsai.Core
   , Program
   , ProgramState
   , debugProgram
-  , emitMessage
   , emittingTask
   , fullDebug
   , issueCommand
@@ -19,7 +18,7 @@ import Prelude
 
 import Bonsai.DOM.Primitive (Element, ElementId(..), appendChild, clearElement, document, elementById, requestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
-import Bonsai.Types (BONSAI, Cmd(..), Document, TaskContext, Window, emptyCommand)
+import Bonsai.Types (BONSAI, Cmd(..), Document, TaskContext, Window, emitMessage, emptyCommand)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (Aff, joinFiber, runAff_, suspendAff)
 import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar)
@@ -279,13 +278,6 @@ emitter env fcmd =
       if mustUpdate
         then updateAndRedraw env *> pure env.dbg.events
         else pure env.dbg.events
-
--- | Emit helper for Tasks.
--- |
--- | In an emitting task, use this function to emit messages.
-emitMessage :: forall aff msg. TaskContext aff msg -> msg -> Aff aff Unit
-emitMessage ctx msg =
-  unsafeCoerceAff $ liftEff $ ctx.emitter msg
 
 -- | Update the model from queued messages, then redraw
 updateAndRedraw
