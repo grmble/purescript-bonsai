@@ -61,3 +61,15 @@ exports.textContent = function (elem) {
     return elem.textContent;
   };
 };
+
+exports.innerHTML = function (elem) {
+  return function () {
+    return elem.innerHTML;
+  };
+};
+
+exports.ownerDocument = function (elem) {
+  return function () {
+    return elem.ownerDocument;
+  };
+};

@@ -3,7 +3,7 @@
   "author": "Juergen Gmeiner <spamless.juergen@gmail.com>",
   "license": "BSD-3-Clause",
   "devDependencies": {
-    "jsdom": "^11.3.0",
+    "jsdom": "^11.6.2",
     "jsdom-simulant": "^1.1.2"
   }
 }

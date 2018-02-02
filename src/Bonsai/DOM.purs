@@ -21,6 +21,7 @@ module Bonsai.DOM
   , focusCmd
   , focusElement
   , focusSelectCmd
+  , innerHTML
   , requestAnimationFrame
   , selectInputElementText
   , textContent
@@ -98,6 +99,13 @@ foreign import selectInputElementText :: forall eff. Element -> Eff (bonsai::BON
 
 -- | Get the element's text content
 foreign import textContent :: forall eff. Element -> Eff (bonsai::BONSAI|eff) String
+
+-- | Get the elements inner html
+foreign import innerHTML :: forall eff. Element -> Eff (bonsai::BONSAI|eff) String
+
+-- | Get the elements document.
+foreign import ownerDocument :: forall eff. Element -> Eff (bonsai::BONSAI|eff) Document
+
 
 maybeNull :: forall eff a. (Foreign -> a) -> Foreign -> Eff (bonsai::BONSAI|eff) (Maybe a)
 maybeNull fn f =

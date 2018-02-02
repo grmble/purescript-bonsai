@@ -19,7 +19,7 @@ import Control.Monad.Free (Free)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
-import Test.JSDOM (jsdomWindow)
+import Test.JSDOM (jsdomWindow, fireClick)
 import Test.Unit (TestF, suite, test)
 import Test.Unit.Assert as Assert
 
@@ -112,7 +112,7 @@ elementTextAfterRender env id = do
 tests :: forall eff. Free (TestF (bonsai::BONSAI,clienteff::CLIENTEFF,console::CONSOLE,exception::EXCEPTION|eff)) Unit
 tests =
   suite "Bonsai.Core" do
-    test "program/taskContext" do
+    test "program/taskContext" $ do
       env <- liftEff $
         jsdomWindow """<html><body id="main"></body></html>""" >>=
         program (ElementId "main") update view 0
@@ -120,22 +120,17 @@ tests =
       Assert.equal "0" initialText
 
       liftEff $ issueCommand env $ pureCommand Inc
-      textAfterInc <- elementTextAfterRender env (ElementId "counter")
-      Assert.equal "1" textAfterInc
-
+      x1 <- elementTextAfterRender env (ElementId "counter")
+      Assert.equal "1" x1
 
       -- liftEff $ issueCommand env $ pureCommand Boo
       -- observe output
 
-      {--
-      -- XXX: does not work - can't get it the event to fire
-
       liftEff $ unsafePartial $ do
         Just button <- elementById (ElementId "plusButton") env.document
         fireClick button
-      textAfterClick <- elementTextAfterRender env (ElementId "counter")
-      Assert.equal "2" textAfterInc
-      --}
+      x2 <- elementTextAfterRender env (ElementId "counter")
+      Assert.equal "2" x2
 
     test "cmd monoid" do
       env <- liftEff $
