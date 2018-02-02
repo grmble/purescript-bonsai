@@ -4,7 +4,7 @@ where
 import Prelude
 
 import Bonsai (BONSAI)
-import Bonsai.DOM.Primitive (ElementId(..), elementById)
+import Bonsai.DOM (ElementId(..), elementById)
 import Bonsai.Types (Document(..))
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Free (Free)

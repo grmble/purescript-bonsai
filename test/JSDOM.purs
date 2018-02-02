@@ -7,8 +7,8 @@ where
 import Prelude
 
 import Bonsai (BONSAI)
-import Bonsai.DOM.Primitive (Element, document)
-import Bonsai.Types (Document, Window)
+import Bonsai.DOM (document)
+import Bonsai.Types (Document, Element, Window)
 import Control.Monad.Eff (Eff)
 
 -- | Create a JSDOM Window

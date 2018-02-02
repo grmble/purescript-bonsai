@@ -3,22 +3,18 @@ module Bonsai.Core
   , Program
   , ProgramState
   , debugProgram
-  , emittingTask
   , fullDebug
   , issueCommand
   , noDebug
-  , plainResult
   , program
-  , simpleTask
-  , unitTask
   )
 where
 
 import Prelude
 
-import Bonsai.DOM.Primitive (Element, ElementId(..), appendChild, clearElement, document, elementById, requestAnimationFrame)
+import Bonsai.DOM (ElementId(..), appendChild, clearElement, document, elementById, requestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
-import Bonsai.Types (BONSAI, Cmd(..), Document, TaskContext, Window, emitMessage, emptyCommand)
+import Bonsai.Types (BONSAI, Cmd(..), Document, Element, TaskContext, Window)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (Aff, joinFiber, runAff_, suspendAff)
 import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar)
@@ -87,12 +83,6 @@ noDebug =
   , events: false
   , patch: false
   }
-
-
--- | Creates an update result with empty command.
-plainResult :: forall aff model msg. model -> Tuple (Cmd aff msg) model
-plainResult model =
-  Tuple emptyCommand model
 
 
 -- | ProgramState tracks the current state of the model, vnode and
@@ -288,25 +278,6 @@ updateAndRedraw env = do
   updateModel env
   _ <- unsafeCoerceEff $ requestAnimationFrame (redrawModel env) env.window
   pure unit
-
--- | Produces a simple task (not cancellable, ony emits the return values
-simpleTask :: forall aff msg. Aff aff msg -> Cmd aff msg
-simpleTask aff =
-  TaskCmd $ \ctx ->
-    aff >>= emitMessage ctx
-
--- | Procudes a task that can emit multiple times
-emittingTask
-  :: forall aff msg
-  .  (TaskContext aff msg -> Aff aff Unit)
-  -> Cmd aff msg
-emittingTask = TaskCmd
-
-
--- | An effectful task without return value - e.g. write to storage, ...
-unitTask :: forall aff msg. Aff aff Unit -> Cmd aff msg
-unitTask aff =
-  TaskCmd $ \_ -> aff
 
 
 -- | Update from queued messages

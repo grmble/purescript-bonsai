@@ -3,8 +3,8 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, Cmd, ElementId(..), Program, elementById, emitMessage, emittingTask, issueCommand, plainResult, program, pureCommand, simpleTask, unitTask, window)
-import Bonsai.DOM.Primitive (textContent)
+import Bonsai (BONSAI, Cmd, ElementId(..), Program, elementById, emitMessage, emittingTask, emptyCommand, issueCommand, program, pureCommand, simpleTask, unitTask, window)
+import Bonsai.DOM (textContent)
 import Bonsai.Html (button, div_, render, span, text, (!))
 import Bonsai.Html.Attributes (id_)
 import Bonsai.Html.Events (onClick)
@@ -40,9 +40,9 @@ update :: forall eff. Msg -> Model -> Tuple (Cmd (console::CONSOLE,clienteff::CL
 update msg model =
   case msg of
     Inc ->
-      plainResult $ model + 1
+      Tuple emptyCommand $ model + 1
     Dec ->
-      plainResult $ model - 1
+      Tuple emptyCommand $ model - 1
     -- test compilation/types for some ways of starting tasks
     Foo ->
       Tuple (simpleTask simpleAff) model
@@ -53,7 +53,7 @@ update msg model =
     Boo ->
       Tuple (unitTask consoleAff) model
     TaskResult ->
-      plainResult model
+      Tuple emptyCommand $ model
 
 view :: Model -> VNode Msg
 view model =

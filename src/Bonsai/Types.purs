@@ -4,11 +4,15 @@ module Bonsai.Types
   ( BONSAI
   , Cmd(..)
   , Document(..)
+  , Element(..)
   , TaskContext
   , Window(..)
   , emitMessage
+  , emittingTask
   , emptyCommand
   , pureCommand
+  , simpleTask
+  , unitTask
   )
 where
 
@@ -69,6 +73,27 @@ emitMessage ctx msg =
   unsafeCoerceAff $ liftEff $ ctx.emitter msg
 
 
+-- | Produces a simple task (not cancellable, ony emits the return values
+simpleTask :: forall aff msg. Aff aff msg -> Cmd aff msg
+simpleTask aff =
+  TaskCmd $ \ctx ->
+    aff >>= emitMessage ctx
+
+-- | Procudes a task that can emit multiple times
+emittingTask
+  :: forall aff msg
+  .  (TaskContext aff msg -> Aff aff Unit)
+  -> Cmd aff msg
+emittingTask = TaskCmd
+
+
+-- | An effectful task without return value - e.g. write to storage, ...
+unitTask :: forall aff msg. Aff aff Unit -> Cmd aff msg
+unitTask aff =
+  TaskCmd $ \_ -> aff
+
+
+
 -- | Semigroup instance for Cmd
 -- |
 -- | aside from the obvious (combining commands with <>)
@@ -102,6 +127,10 @@ newtype Document =
 -- | The type for the global javascript window
 newtype Window =
   Window Foreign
+
+-- | The type for a dom element
+newtype Element =
+  Element Foreign
 
 -- | The Task Context holds the emitter function for the task
 -- |

@@ -1,4 +1,12 @@
--- | Heaviliy inspirec by purescript-debug
+-- | Heaviliy inspired by purescript-debug
+-- |
+-- | This contains helper functions to log arbitrary
+-- | objects to the javscript console.  The bad news
+-- | is that logging purescript objects from javascript
+-- | is not very readable.
+-- |
+-- | It does have the advantage that we don't require
+-- | a Show instance for everyting.s
 module Bonsai.Debug
   (StartTiming, debugJsonObj, debugTiming, logObj, logJson, logJsonObj, logTiming, startTiming)
 where
