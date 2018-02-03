@@ -12,16 +12,16 @@ where
 
 import Prelude
 
-import Bonsai.DOM (ElementId(..), appendChild, clearElement, document, elementById, requestAnimationFrame)
+import Bonsai.DOM (Document, Element, ElementId(..), Window, appendChild, clearElement, document, elementById, requestAnimationFrame, runF)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
-import Bonsai.Types (BONSAI, Cmd(..), Document, Element, TaskContext, Window)
+import Bonsai.Types (BONSAI, Cmd(..), TaskContext)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (Aff, joinFiber, runAff_, suspendAff)
 import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (EXCEPTION, Error, error, throwException)
+import Control.Monad.Eff.Exception (EXCEPTION, Error, error)
 import Control.Monad.Eff.Ref (REF, Ref, modifyRef, modifyRef', newRef, readRef, writeRef)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Control.Monad.Except (runExcept)
@@ -30,7 +30,6 @@ import Data.Array.Partial as AP
 import Data.Either (Either(..))
 import Data.Foldable (for_, intercalate)
 import Data.Foreign (F, renderForeignError)
-import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
 import Unsafe.Coerce (unsafeCoerce)
@@ -120,30 +119,26 @@ debugProgram
   -> Eff (bonsai::BONSAI,exception::EXCEPTION|eff) (Program aff model msg)
 debugProgram containerId@(ElementId idStr) updater renderer model dbg _window =
   unsafeCoerceEff $ do
-    _document <- document _window
-    element   <- elementById containerId _document
-    case element of
-      Nothing ->
-        throwException (error $ "element not found:" <> idStr)
-      Just container -> do
-        -- use a fake ProgramState so we have a ProgramEnv to render with
-        -- (needed for the emitters)
-        let vnode = renderer model
-        fakeState <- newRef { model: model, vnode: vnode, dnode: container, dirty: false }
-        pending   <- newRef []
-        let env = { dbg, updater: updater
-                  , renderer: renderer, pending: pending, state: fakeState
-                  , window: _window, document: _document
-                  }
+    _document <- runF $ document _window
+    container <- runF $ elementById containerId _document
 
-        ts <- startTiming
-        let dnode = render env.document (emitter env) vnode
-        clearElement container
-        _ <- appendChild dnode container
-        debugTiming env.dbg.timing "render/appendChild" ts
+    -- use a fake ProgramState so we have a ProgramEnv to render with
+    -- (needed for the emitters)
+    let vnode = renderer model
+    fakeState <- newRef { model: model, vnode: vnode, dnode: container, dirty: false }
+    pending   <- newRef []
+    let env = { dbg, updater: updater
+              , renderer: renderer, pending: pending, state: fakeState
+              , window: _window, document: _document
+              }
 
-        modifyRef fakeState \state -> state { dnode = dnode }
-        pure env
+    ts <- startTiming
+    let dnode = render env.document (emitter env) vnode
+    _ <- runF (clearElement container >>= appendChild dnode)
+    debugTiming env.dbg.timing "render/appendChild" ts
+
+    modifyRef fakeState \state -> state { dnode = dnode }
+    pure env
 
 
 -- | Queue messages that will be applied to the model.
@@ -276,7 +271,8 @@ updateAndRedraw
   -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 updateAndRedraw env = do
   updateModel env
-  _ <- unsafeCoerceEff $ requestAnimationFrame (redrawModel env) env.window
+  -- can't fail ... famous last words
+  let _ = runExcept $ requestAnimationFrame (redrawModel env) env.window
   pure unit
 
 

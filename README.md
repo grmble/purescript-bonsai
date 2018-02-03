@@ -71,7 +71,7 @@ view model =
       button ! cls "plus" ! onClick Dec $ do text "-"
 
 main =
-  ( window >>=
+  ( runF window >>=
     program (ElementId "main") update view 0) *>
   pure unit
 ```

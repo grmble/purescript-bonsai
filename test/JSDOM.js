@@ -8,20 +8,14 @@ const jsdomOpts = {
   pretendToBeVisual: true,
 };
 
-function jsdomWindow(str) {
-  return function () {
+
+exports.primitives =
+  { jsdomWindow: function (str) {
       const dom = new jsdom.JSDOM(str, jsdomOpts);
       return dom.window;
-  };
-}
-
-function simulantFire(ev) {
-  return function (elem) {
-    return function () {
+    }
+  , simulantFire: function (ev, elem) {
       simulant.fire(elem, ev);
-    };
-  };
-}
+    }
 
-exports.jsdomWindow = jsdomWindow;
-exports.simulantFire = simulantFire;
+  };

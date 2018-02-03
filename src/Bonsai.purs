@@ -9,5 +9,5 @@ module Bonsai
 where
 
 import Bonsai.Core (Program, ProgramState, debugProgram, fullDebug, noDebug, issueCommand, program)
-import Bonsai.DOM (ElementId(..), document, elementById, window)
-import Bonsai.Types (BONSAI, Cmd(..), Document, Window, Element, emitMessage, emittingTask, emptyCommand, pureCommand, simpleTask, unitTask)
+import Bonsai.DOM (Document, ElementId(..), Element, Window, document, elementById, window)
+import Bonsai.Types (BONSAI, Cmd(..), emitMessage, emittingTask, emptyCommand, pureCommand, simpleTask, unitTask)

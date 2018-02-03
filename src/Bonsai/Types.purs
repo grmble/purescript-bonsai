@@ -3,10 +3,7 @@
 module Bonsai.Types
   ( BONSAI
   , Cmd(..)
-  , Document(..)
-  , Element(..)
   , TaskContext
-  , Window(..)
   , emitMessage
   , emittingTask
   , emptyCommand
@@ -18,13 +15,13 @@ where
 
 import Prelude
 
+import Bonsai.DOM (Document)
 import Control.Monad.Aff (Aff, Fiber)
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Data.Foldable (for_)
-import Data.Foreign (Foreign)
 import Data.Monoid (class Monoid)
 
 
@@ -119,18 +116,6 @@ instance semigroupCmd :: Semigroup (Cmd eff msg) where
 instance monoidCmd :: Monoid (Cmd eff msg) where
   mempty = Cmd []
 
-
--- | The type for the global javascript document
-newtype Document =
-  Document Foreign
-
--- | The type for the global javascript window
-newtype Window =
-  Window Foreign
-
--- | The type for a dom element
-newtype Element =
-  Element Foreign
 
 -- | The Task Context holds the emitter function for the task
 -- |

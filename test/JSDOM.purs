@@ -6,22 +6,36 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI)
-import Bonsai.DOM (document)
-import Bonsai.Types (Document, Element, Window)
-import Control.Monad.Eff (Eff)
+import Bonsai.DOM (Document, Element, Window, document)
+import Data.Foreign (F)
+import Data.Function.Uncurried (Fn1, Fn2, runFn2)
+
+
+foreign import primitives ::
+  { jsdomWindow :: Fn1 String Window
+  , simulantFire :: Fn2 String Element Unit
+  }
 
 -- | Create a JSDOM Window
-foreign import jsdomWindow :: forall eff. String -> Eff (bonsai::BONSAI|eff) Window
+jsdomWindow :: String -> Window
+jsdomWindow =
+  primitives.jsdomWindow
 
 -- | Create a JSDOM Document (not returning the window)
-jsdomDocument :: forall eff. String -> Eff (bonsai::BONSAI|eff) Document
+jsdomDocument :: String -> F Document
 jsdomDocument html =
-  jsdomWindow html >>= document
+  jsdomWindow html # document
+
 
 -- | Fire an event using simulant.
-foreign import simulantFire :: forall eff. String -> Element -> Eff (bonsai::BONSAI|eff) Unit
+-- |
+-- | Returns the element for easy chaining.
+simulantFire :: String -> Element -> F Element
+simulantFire ev elem = do
+  let _ = runFn2 primitives.simulantFire ev elem
+  pure elem
 
-fireClick :: forall eff. Element -> Eff (bonsai::BONSAI|eff) Unit
+
+fireClick :: Element -> F Element
 fireClick =
   simulantFire "click"

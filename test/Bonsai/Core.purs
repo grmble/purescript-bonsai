@@ -4,7 +4,7 @@ where
 import Prelude
 
 import Bonsai (BONSAI, Cmd, ElementId(..), Program, elementById, emitMessage, emittingTask, emptyCommand, issueCommand, program, pureCommand, simpleTask, unitTask, window)
-import Bonsai.DOM (textContent)
+import Bonsai.DOM (affF, runF, textContent)
 import Bonsai.Html (button, div_, render, span, text, (!))
 import Bonsai.Html.Attributes (id_)
 import Bonsai.Html.Events (onClick)
@@ -16,9 +16,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Free (Free)
-import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
-import Partial.Unsafe (unsafePartial)
 import Test.JSDOM (jsdomWindow, fireClick)
 import Test.Unit (TestF, suite, test)
 import Test.Unit.Assert as Assert
@@ -89,9 +87,8 @@ consoleAff = do
 -- test using issueCommand from a main program
 -- this is only here to make sure it compiles
 main :: Eff (bonsai::BONSAI,exception::EXCEPTION) Unit
-main = unsafePartial $ do
-  prg <- window >>=
-    program (ElementId "main") update view 0
+main = do
+  prg <- window # program (ElementId "main") update view 0
   issueCommand prg (simpleTask simpleAff)
   issueCommand prg (emittingTask emittingAff)
   pure unit
@@ -104,9 +101,7 @@ elementTextAfterRender
   -> Aff (bonsai::BONSAI|eff) String
 elementTextAfterRender env id = do
   delay (Milliseconds 100.0) -- XXX: delay until rendered
-  liftEff $ unsafePartial $ do
-    Just elem <- elementById (ElementId "counter") env.document
-    textContent elem
+  affF (elementById (ElementId "counter") env.document >>= textContent)
 
 
 tests :: forall eff. Free (TestF (bonsai::BONSAI,clienteff::CLIENTEFF,console::CONSOLE,exception::EXCEPTION|eff)) Unit
@@ -114,7 +109,7 @@ tests =
   suite "Bonsai.Core" do
     test "program/taskContext" $ do
       env <- liftEff $
-        jsdomWindow """<html><body id="main"></body></html>""" >>=
+        jsdomWindow """<html><body id="main"></body></html>""" #
         program (ElementId "main") update view 0
       initialText <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "0" initialText
@@ -126,15 +121,15 @@ tests =
       -- liftEff $ issueCommand env $ pureCommand Boo
       -- observe output
 
-      liftEff $ unsafePartial $ do
-        Just button <- elementById (ElementId "plusButton") env.document
-        fireClick button
+      _  <- liftEff $
+        runF $ elementById (ElementId "plusButton") env.document >>=
+        fireClick
       x2 <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "2" x2
 
     test "cmd monoid" do
       env <- liftEff $
-        jsdomWindow """<html><body id="main"></body></html>""" >>=
+        jsdomWindow """<html><body id="main"></body></html>""" #
         program (ElementId "main") update view 0
       initialText <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "0" initialText

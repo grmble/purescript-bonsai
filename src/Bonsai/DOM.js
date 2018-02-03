@@ -1,75 +1,47 @@
 "use strict";
 
-exports.window = function () {
-  return window;
-};
 
-exports.document = function (win) {
-  return function () {
-    return win.document;
-  };
-};
+exports.primitives =
+{ "window": (typeof window === "undefined") ? undefined : window
 
-exports.primElementById = function (id) {
-  return function (doc) {
-    return function () {
-      return doc.getElementById(id);
-    };
-  };
-};
+, elementById: function (id, doc) {
+    return doc.getElementById(id);
+  }
 
-exports.appendChild = function (child) {
-  return function (parent) {
-    return function () {
-      parent.appendChild(child);
-    };
-  };
-};
+, appendChild: function (child, parent) {
+    return parent.appendChild(child);
+  }
 
-exports.clearElement = function (elem) {
-  return function () {
-    elem.innerHTML = '';
-  };
-};
+, clearElement: function (elem) {
+    elem.innerHTML = "";
+  }
 
-exports.focusElement = function (elem) {
-  return function () {
+, focusElement: function (elem) {
     elem.focus();
-  };
-};
+  }
 
-exports.requestAnimationFrame = function (eff) {
-  return function (win) {
-    return function () {
-      if (typeof win.requestAnimationFrame === "undefined") {
-        win.setTimeout(eff);
-        return 0xdeadbeef;
-      }
-      return win.requestAnimationFrame(eff);
-    };
-  };
-};
+, querySelector: function (str, elem) {
+    return elem.querySelector(str);
+  }
 
-exports.selectInputElementText = function (elem) {
-  return function () {
+, querySelectorAll: function (str, elem) {
+    const nl =  elem.querySelectorAll(str);
+    var arr = [], i;
+    for (i = 0; i < nl.length; i++) {
+      arr.push(nl[i]);
+    }
+    return arr;
+  }
+
+, selectElement: function (elem) {
     elem.select();
-  };
-};
+  }
 
-exports.textContent = function (elem) {
-  return function () {
-    return elem.textContent;
-  };
-};
-
-exports.innerHTML = function (elem) {
-  return function () {
-    return elem.innerHTML;
-  };
-};
-
-exports.ownerDocument = function (elem) {
-  return function () {
-    return elem.ownerDocument;
-  };
+, requestAnimationFrame: function (fn, win) {
+    if (typeof win.requestAnimationFrame == "undefined") {
+      win.setTimeout(fn);
+      return 0xdeadbeef;
+    }
+    return win.requestAnimationFrame(fn);
+  }
 };

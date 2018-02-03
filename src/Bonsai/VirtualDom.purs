@@ -25,7 +25,8 @@ where
 
 import Prelude
 
-import Bonsai.Types (BONSAI, Cmd, Document, Element)
+import Bonsai.DOM (Document, Element)
+import Bonsai.Types (BONSAI, Cmd)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (Error)
 import Data.Either (Either)
