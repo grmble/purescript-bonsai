@@ -3,8 +3,8 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, Cmd, ElementId(..), Program, elementById, emitMessage, emittingTask, emptyCommand, issueCommand, program, pureCommand, simpleTask, unitTask, window)
-import Bonsai.DOM (affF, runF, textContent)
+import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, emptyCommand, issueCommand, program, pureCommand, simpleTask, unitTask)
+import Bonsai.DOM (ElementId(..), affF, elementById, runF, textContent, window)
 import Bonsai.Html (button, div_, render, span, text, (!))
 import Bonsai.Html.Attributes (id_)
 import Bonsai.Html.Events (onClick)
