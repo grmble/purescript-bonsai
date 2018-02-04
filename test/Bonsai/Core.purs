@@ -4,6 +4,7 @@ where
 import Prelude
 
 import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, emptyCommand, issueCommand, program, pureCommand, simpleTask, unitTask)
+import Bonsai.Core (delayUntilClean)
 import Bonsai.DOM (DOM, ElementId(..), affF, elementById, textContent, window)
 import Bonsai.Html (button, div_, render, span, text, (!))
 import Bonsai.Html.Attributes (id_)
@@ -11,6 +12,7 @@ import Bonsai.Html.Events (onClick)
 import Bonsai.Types (TaskContext)
 import Bonsai.VirtualDom (VNode)
 import Control.Monad.Aff (Aff, Milliseconds(..), delay)
+import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
@@ -100,8 +102,8 @@ elementTextAfterRender
   -> ElementId
   -> Aff (dom::DOM|eff) String
 elementTextAfterRender env id = do
-  delay (Milliseconds 100.0) -- XXX: delay until rendered
-  affF (elementById (ElementId "counter") env.document >>= textContent)
+  unsafeCoerceAff $ delayUntilClean env
+  affF $ (\_ -> elementById id env.document >>= textContent) unit
 
 
 tests :: forall eff. Free (TestF (bonsai::BONSAI,dom::DOM,clienteff::CLIENTEFF,console::CONSOLE,exception::EXCEPTION|eff)) Unit
@@ -134,11 +136,12 @@ tests =
       initialText <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "0" initialText
 
-      let cmd = pureCommand Inc <> unitTask (delay (Milliseconds 500.0)) <> pureCommand Inc
+      let cmd = pureCommand Inc <> unitTask (delay (Milliseconds 200.0)) <> pureCommand Inc
       liftEff $ issueCommand env cmd
+      delay (Milliseconds 100.0)
       textAfterInc <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "1" textAfterInc
 
-      delay (Milliseconds 500.0)
+      delay (Milliseconds 200.0)
       textAfterRest <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "2" textAfterRest

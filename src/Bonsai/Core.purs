@@ -4,6 +4,7 @@ module Bonsai.Core
   , ProgramState
 
   , debugProgram
+  , delayUntilClean
   , fullDebug
   , issueCommand
   , noDebug
@@ -13,12 +14,12 @@ where
 
 import Prelude
 
-import Bonsai.DOM (DOM, Document, Element, ElementId(ElementId), Window, appendChild, clearElement, document, effF, elementById, requestAnimationFrame)
+import Bonsai.DOM (DOM, Document, Element, ElementId(ElementId), Window, appendChild, clearElement, document, effF, elementById, foreignErrorMsg, requestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
 import Bonsai.Types (BONSAI, Cmd(..), TaskContext)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
-import Control.Monad.Aff (Aff, joinFiber, runAff_, suspendAff)
-import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar)
+import Control.Monad.Aff (Aff, joinFiber, launchAff_, liftEff', runAff_, suspendAff)
+import Control.Monad.Aff.AVar (AVAR, AVar, makeEmptyVar, putVar, takeVar)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -29,8 +30,8 @@ import Control.Monad.Except (runExcept)
 import Data.Array as Array
 import Data.Array.Partial as AP
 import Data.Either (Either(..))
-import Data.Foldable (for_, intercalate)
-import Data.Foreign (F, renderForeignError)
+import Data.Foldable (for_)
+import Data.Foreign (F)
 import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
 import Unsafe.Coerce (unsafeCoerce)
@@ -49,6 +50,7 @@ type Program aff model msg =
   , renderer :: model -> VNode msg
   , pending  :: Ref (Array msg)
   , state    :: Ref (ProgramState model msg)
+  , delayed  :: Ref (Array (AVar Unit))
   , window   :: Window
   , document :: Document
   }
@@ -129,9 +131,9 @@ debugProgram dbg containerId@(ElementId idStr) updater renderer model win =
     let vnode = renderer model
     fakeState <- newRef { model: model, vnode: vnode, dnode: container, dirty: false }
     pending   <- newRef []
-    let env = { dbg, updater: updater
-              , renderer: renderer, pending: pending, state: fakeState
-              , window: _window, document: _document
+    delayed   <- newRef []
+    let env = { dbg, updater, renderer, pending, state: fakeState
+              , delayed, window: _window, document: _document
               }
 
     ts <- startTiming
@@ -238,6 +240,7 @@ taskContext env = do
   avar <- makeEmptyVar
   pure
     { emitter: emitTheTypeIsALie
+    , delay: unsafeCoerceAff $ delayUntilClean env
     , fiber: avar
     , document: env.document
     }
@@ -259,7 +262,7 @@ emitter
 emitter env fcmd =
   case runExcept fcmd of
     Left err -> do
-      emitError (error $ intercalate ", " $ renderForeignError <$> err) *> pure true
+      emitError (error $ foreignErrorMsg err) *> pure true
     Right cmd -> do
       mustUpdate <- queueCommand env (unsafeCoerceCmd cmd)
       if mustUpdate
@@ -315,7 +318,7 @@ updateModel env = do
 redrawModel
   :: forall eff model msg
   .  Program eff model msg
-  -> Eff (bonsai::BONSAI,ref::REF|eff) Unit
+  -> Eff (avar::AVAR,bonsai::BONSAI,ref::REF|eff) Unit
 redrawModel env = do
   state <- liftEff $ readRef env.state
   if state.dirty
@@ -331,5 +334,29 @@ redrawModel env = do
 
       debugJsonObj env.dbg.patch "patch:" patch
       writeRef env.state (state {vnode = vnode2, dnode = dnode2, dirty = false})
+
+      delayed <- modifyRef' env.delayed \d -> {state: [], value: d}
+      launchAff_ $ continueDelayed delayed
+      pure unit
     else
       pure unit
+
+-- | Continue the delayed computations
+continueDelayed :: forall eff. Array (AVar Unit) -> Aff (avar::AVAR|eff) Unit
+continueDelayed delayed =
+  for_ delayed \avar -> putVar unit avar
+
+-- | Delay until the model is clean again after the next render.
+delayUntilClean
+  :: forall eff model msg
+  .  Program eff model msg
+  -> Aff (avar::AVAR,ref::REF|eff) Unit
+delayUntilClean env = do
+  state <- liftEff $ readRef env.state
+  pending <- liftEff $ readRef env.pending
+  when (state.dirty || (not $ Array.null pending)) do
+    avar <- makeEmptyVar
+    liftEff' $ modifyRef env.delayed \delayed -> Array.snoc delayed avar
+    -- this will block until the delays are cleared out after the
+    -- next render
+    takeVar avar

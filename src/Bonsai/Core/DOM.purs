@@ -15,17 +15,21 @@ where
 import Prelude
 
 import Bonsai.DOM (DOM, ElementId, affF, elementById, focusElement, selectElementText, setLocationHash)
-import Bonsai.Types (Cmd, emittingTask)
-import Control.Monad.Aff (Aff, Milliseconds(..), delay)
+import Bonsai.Types (Cmd, TaskContext, delayUntilRendered, emittingTask)
+import Control.Monad.Aff (Aff)
 import Data.Foreign (F)
 
 
 -- | Run the F when the model is clean.
 -- |
 -- | Any errors will be turned into exceptions.
-delayF :: forall eff a. (Unit -> F a) -> Aff (dom::DOM|eff) Unit
-delayF fa = do
-  delay (Milliseconds 20.0)
+-- |
+-- | If you are trying to use this after an issueCommand
+-- | when testing, use Bonsai.Core.delayUntilClean
+-- | and coerce the Affs as needed.
+delayF :: forall eff effT msg a. TaskContext effT msg -> (Unit -> F a) -> Aff (dom::DOM|eff) Unit
+delayF ctx fa = do
+  delayUntilRendered ctx
   _ <- affF (fa unit)
   pure unit
 
@@ -36,7 +40,7 @@ delayF fa = do
 focusCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
 focusCmd id =
   emittingTask \ctx ->
-    delayF (\_ -> elementById id ctx.document >>= focusElement)
+    delayF ctx (\_ -> elementById id ctx.document >>= focusElement)
 
 
 -- | DOM Side-Effect Cmd that will set the focus and select the input field
@@ -45,7 +49,9 @@ focusCmd id =
 focusSelectCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
 focusSelectCmd id =
   emittingTask \ctx ->
-    delayF (\_ -> elementById id ctx.document >>= focusElement >>= selectElementText)
+    delayF ctx
+      (\_ -> elementById id ctx.document >>= focusElement >>= selectElementText)
+
 
 
 -- | DOM Side-Effect Cmd that will set the location hash.

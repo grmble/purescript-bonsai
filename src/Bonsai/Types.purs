@@ -4,6 +4,7 @@ module Bonsai.Types
   ( BONSAI
   , Cmd(..)
   , TaskContext
+  , delayUntilRendered
   , emitMessage
   , emittingTask
   , emptyCommand
@@ -69,6 +70,10 @@ emitMessage :: forall aff msg. TaskContext aff msg -> msg -> Aff aff Unit
 emitMessage ctx msg =
   unsafeCoerceAff $ liftEff $ ctx.emitter msg
 
+-- | Delay the task until after the next render.
+delayUntilRendered :: forall eff aff msg. TaskContext eff msg -> Aff aff Unit
+delayUntilRendered ctx =
+  unsafeCoerceAff $ ctx.delay
 
 -- | Produces a simple task (not cancellable, ony emits the return values
 simpleTask :: forall aff msg. Aff aff msg -> Cmd aff msg
@@ -97,6 +102,10 @@ unitTask aff =
 -- | this will also make (Tuple (Cmd eff) Model)
 -- | an applicative functor (= the results of update functions)
 instance semigroupCmd :: Semigroup (Cmd eff msg) where
+  append (Cmd []) x =
+    x
+  append x (Cmd []) =
+    x
   append (Cmd m1) (Cmd m2) =
     Cmd (m1 <> m2)
   append (Cmd m) (TaskCmd task) =
@@ -124,6 +133,7 @@ instance monoidCmd :: Monoid (Cmd eff msg) where
 -- | as well.  Maybe not a good idea.
 type TaskContext eff msg =
   { emitter :: msg -> Eff eff Unit
+  , delay :: Aff eff Unit
   , fiber :: AVar (Fiber eff Unit)
   , document :: Document
   }
