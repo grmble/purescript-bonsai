@@ -45,6 +45,7 @@ module Bonsai.DOM
   , querySelectorAll
   , requestAnimationFrame
   , selectElementText
+  , setLocationHash
   , textContent
   , window
   )

@@ -2,6 +2,7 @@ module Bonsai.Core
   ( DebugOptions
   , Program
   , ProgramState
+
   , debugProgram
   , fullDebug
   , issueCommand
@@ -12,7 +13,7 @@ where
 
 import Prelude
 
-import Bonsai.DOM (DOM, Document, Element, ElementId(..), Window, appendChild, clearElement, document, effF, elementById, requestAnimationFrame)
+import Bonsai.DOM (DOM, Document, Element, ElementId(ElementId), Window, appendChild, clearElement, document, effF, elementById, requestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
 import Bonsai.Types (BONSAI, Cmd(..), TaskContext)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
