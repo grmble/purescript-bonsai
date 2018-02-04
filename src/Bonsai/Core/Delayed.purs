@@ -13,15 +13,15 @@ where
 
 import Prelude
 
-import Bonsai.DOM (ElementId, elementById, focusElement, affF, selectElement)
-import Bonsai.Types (BONSAI, Cmd, emittingTask)
+import Bonsai.DOM (DOM, ElementId, elementById, focusElement, affF, selectElementText)
+import Bonsai.Types (Cmd, emittingTask)
 import Control.Monad.Aff (Aff, Milliseconds(..), delay)
 import Data.Foreign (F)
 
 
 
 -- | Cmd that will set the focus to the input field.
-focusCmd :: forall eff msg. ElementId -> Cmd (bonsai::BONSAI|eff) msg
+focusCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
 focusCmd id =
   emittingTask \ctx ->
     delayF (\_ -> elementById id ctx.document >>= focusElement)
@@ -29,16 +29,16 @@ focusCmd id =
 
 
 -- | Cmd that will set the focus and select the input field
-focusSelectCmd :: forall eff msg. ElementId -> Cmd (bonsai::BONSAI|eff) msg
+focusSelectCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
 focusSelectCmd id =
   emittingTask \ctx ->
-    delayF (\_ -> elementById id ctx.document >>= focusElement >>= selectElement)
+    delayF (\_ -> elementById id ctx.document >>= focusElement >>= selectElementText)
 
 
 -- | Run the F when the model is clean.
 -- |
 -- | Any errors will be turned into exceptions.
-delayF :: forall eff a. (Unit -> F a) -> Aff (bonsai::BONSAI|eff) Unit
+delayF :: forall eff a. (Unit -> F a) -> Aff (dom::DOM|eff) Unit
 delayF fa = do
   delay (Milliseconds 20.0)
   _ <- affF (fa unit)

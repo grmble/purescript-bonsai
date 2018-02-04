@@ -12,7 +12,7 @@ where
 
 import Prelude
 
-import Bonsai.DOM (Document, Element, ElementId(..), Window, appendChild, clearElement, document, elementById, requestAnimationFrame, runF)
+import Bonsai.DOM (DOM, Document, Element, ElementId(..), Window, appendChild, clearElement, document, effF, elementById, requestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
 import Bonsai.Types (BONSAI, Cmd(..), TaskContext)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
@@ -102,25 +102,26 @@ program
   -> (msg -> model -> Tuple (Cmd aff msg) model)
   -> (model -> VNode msg)
   -> model
-  -> Window
-  -> Eff (bonsai::BONSAI,exception::EXCEPTION|eff) (Program aff model msg)
-program containerId updater renderer model =
-  debugProgram containerId updater renderer model noDebug
+  -> F Window
+  -> Eff (dom::DOM,exception::EXCEPTION|eff) (Program aff model msg)
+program =
+  debugProgram noDebug
 
 
 debugProgram
   :: forall eff aff model msg
-  .  ElementId
+  . DebugOptions
+  -> ElementId
   -> (msg -> model -> Tuple (Cmd aff msg) model)
   -> (model -> VNode msg)
   -> model
-  -> DebugOptions
-  -> Window
-  -> Eff (bonsai::BONSAI,exception::EXCEPTION|eff) (Program aff model msg)
-debugProgram containerId@(ElementId idStr) updater renderer model dbg _window =
+  -> F Window
+  -> Eff (dom::DOM,exception::EXCEPTION|eff) (Program aff model msg)
+debugProgram dbg containerId@(ElementId idStr) updater renderer model win =
   unsafeCoerceEff $ do
-    _document <- runF $ document _window
-    container <- runF $ elementById containerId _document
+    _window <- effF $ win
+    _document <- effF $ document _window
+    container <- effF $ elementById containerId _document
 
     -- use a fake ProgramState so we have a ProgramEnv to render with
     -- (needed for the emitters)
@@ -134,7 +135,7 @@ debugProgram containerId@(ElementId idStr) updater renderer model dbg _window =
 
     ts <- startTiming
     let dnode = render env.document (emitter env) vnode
-    _ <- runF (clearElement container >>= appendChild dnode)
+    _ <- effF (clearElement container >>= appendChild dnode)
     debugTiming env.dbg.timing "render/appendChild" ts
 
     modifyRef fakeState \state -> state { dnode = dnode }

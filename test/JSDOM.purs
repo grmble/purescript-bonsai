@@ -6,36 +6,35 @@ where
 
 import Prelude
 
-import Bonsai.DOM (Document, Element, Window, document)
-import Data.Foreign (F)
+import Bonsai.DOM (Document, Element, Window(..), document, failNullOrUndefined)
+import Data.Foreign (F, Foreign)
 import Data.Function.Uncurried (Fn1, Fn2, runFn2)
 
 
 foreign import primitives ::
-  { jsdomWindow :: Fn1 String Window
+  { jsdomWindow :: Fn1 String Foreign
   , simulantFire :: Fn2 String Element Unit
   }
 
 -- | Create a JSDOM Window
-jsdomWindow :: String -> Window
-jsdomWindow =
-  primitives.jsdomWindow
+jsdomWindow :: String -> F Window
+jsdomWindow html =
+  primitives.jsdomWindow html #
+  failNullOrUndefined "jsdomWindow" >>=
+  pure <<< Window
 
 -- | Create a JSDOM Document (not returning the window)
 jsdomDocument :: String -> F Document
 jsdomDocument html =
-  jsdomWindow html # document
+  jsdomWindow html >>= document
 
 
 -- | Fire an event using simulant.
--- |
--- | Returns the element for easy chaining.
-simulantFire :: String -> Element -> F Element
-simulantFire ev elem = do
-  let _ = runFn2 primitives.simulantFire ev elem
-  pure elem
+simulantFire :: String -> Element -> F Unit
+simulantFire ev elem =
+  pure $ runFn2 primitives.simulantFire ev elem
 
 
-fireClick :: Element -> F Element
+fireClick :: Element -> F Unit
 fireClick =
   simulantFire "click"

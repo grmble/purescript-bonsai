@@ -3,6 +3,7 @@ module Test.Main where
 import Prelude
 
 import Bonsai (BONSAI)
+import Bonsai.DOM (DOM)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.AVar (AVAR)
 import Control.Monad.Eff.Console (CONSOLE)
@@ -19,6 +20,7 @@ main :: forall t1.
   Eff
     ( avar :: AVAR
     , bonsai :: BONSAI
+    , dom :: DOM
     , clienteff :: CLIENTEFF
     , console :: CONSOLE
     , testOutput :: TESTOUTPUT

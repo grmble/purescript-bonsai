@@ -4,7 +4,7 @@ where
 import Prelude
 
 import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, emptyCommand, issueCommand, program, pureCommand, simpleTask, unitTask)
-import Bonsai.DOM (ElementId(..), affF, elementById, runF, textContent, window)
+import Bonsai.DOM (DOM, ElementId(..), affF, elementById, textContent, window)
 import Bonsai.Html (button, div_, render, span, text, (!))
 import Bonsai.Html.Attributes (id_)
 import Bonsai.Html.Events (onClick)
@@ -86,7 +86,7 @@ consoleAff = do
 
 -- test using issueCommand from a main program
 -- this is only here to make sure it compiles
-main :: Eff (bonsai::BONSAI,exception::EXCEPTION) Unit
+main :: Eff (bonsai::BONSAI,dom::DOM,exception::EXCEPTION) Unit
 main = do
   prg <- window # program (ElementId "main") update view 0
   issueCommand prg (simpleTask simpleAff)
@@ -98,13 +98,13 @@ elementTextAfterRender
   :: forall eff model msg
   .  Program eff model msg
   -> ElementId
-  -> Aff (bonsai::BONSAI|eff) String
+  -> Aff (dom::DOM|eff) String
 elementTextAfterRender env id = do
   delay (Milliseconds 100.0) -- XXX: delay until rendered
   affF (elementById (ElementId "counter") env.document >>= textContent)
 
 
-tests :: forall eff. Free (TestF (bonsai::BONSAI,clienteff::CLIENTEFF,console::CONSOLE,exception::EXCEPTION|eff)) Unit
+tests :: forall eff. Free (TestF (bonsai::BONSAI,dom::DOM,clienteff::CLIENTEFF,console::CONSOLE,exception::EXCEPTION|eff)) Unit
 tests =
   suite "Bonsai.Core" do
     test "program/taskContext" $ do
@@ -121,8 +121,8 @@ tests =
       -- liftEff $ issueCommand env $ pureCommand Boo
       -- observe output
 
-      _  <- liftEff $
-        runF $ elementById (ElementId "plusButton") env.document >>=
+      _  <- affF $
+        elementById (ElementId "plusButton") env.document >>=
         fireClick
       x2 <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "2" x2

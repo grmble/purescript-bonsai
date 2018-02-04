@@ -3,8 +3,7 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI)
-import Bonsai.DOM (Document(..), ElementId(..), affF, elementById, innerHTML, ownerDocument, querySelector, querySelectorAll, textContent)
+import Bonsai.DOM (DOM, Document(..), ElementId(..), affF, elementById, innerHTML, locationHash, ownerDocument, querySelector, querySelectorAll, textContent)
 import Control.Monad.Aff (try)
 import Control.Monad.Free (Free)
 import Data.Array as Array
@@ -18,7 +17,7 @@ import Test.Unit.Assert as Assert
 mainHtml :: String
 mainHtml = """<html><body id="main">Hello, world!</body></html>"""
 
-tests :: forall eff. Free (TestF (bonsai::BONSAI|eff)) Unit
+tests :: forall eff. Free (TestF (dom::DOM|eff)) Unit
 tests =
 
   suite "Bonsai.DOM" do
@@ -53,6 +52,11 @@ tests =
       Assert.equal 0 (Array.length arr)
       arr2 <- affF $ querySelectorAll "body" (unwrap doc)
       Assert.equal 1 (Array.length arr2)
+
+    test "locationHash" do
+      hash <- affF $ jsdomDocument mainHtml >>= locationHash
+      Assert.equal "" hash
+
 
     -- the other DOM helpers can't really be tested with our limited
     -- dom vocabulary.  they will be exercised by the full virtualdom/bonsai tests

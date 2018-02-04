@@ -47,11 +47,12 @@ where
 import Prelude
 
 import Bonsai (Cmd, emptyCommand, pureCommand)
+import Bonsai.DOM (copyFakeArray)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
 import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, isNull, isUndefined, readBoolean, readInt, readNullOrUndefined, readString)
 import Data.Foreign.Index ((!))
-import Data.List (List, catMaybes, groupBy, range)
+import Data.List as List
 import Data.List.NonEmpty as NEL
 import Data.Map (Map, fromFoldable)
 import Data.Maybe (Maybe(..))
@@ -154,17 +155,17 @@ enterEscapeKeyHandler enterFn escFn ev =
 -- |
 -- | This is meant to be used on an array of dom nodes.
 namesAndValues :: Foreign -> F (Map String (NEL.NonEmptyList String))
-namesAndValues arr = do
-  len <- arr ! "length" >>= readInt
-  (fromFoldable <<< groupByName <<< catMaybes) <$> traverse (nameAndValue arr) (range 0 (len - 1))
+namesAndValues fakeArr = do
+  lst <- List.fromFoldable <$> copyFakeArray fakeArr
+  (fromFoldable <<< groupByName <<< List.catMaybes) <$> traverse nameAndValue lst
 
   where
-    groupByName :: List (Tuple String String) -> List (Tuple String (NEL.NonEmptyList String))
+    groupByName :: List.List (Tuple String String) -> List.List (Tuple String (NEL.NonEmptyList String))
     groupByName tups =
       map toTup grouped
 
       where
-        grouped = groupBy (\a b -> fst a == fst b) tups
+        grouped = List.groupBy (\a b -> fst a == fst b) tups
 
         toTup ne =
           Tuple k vs
@@ -173,9 +174,8 @@ namesAndValues arr = do
             vs = map snd ne
 
 
-nameAndValue :: Foreign -> Int -> F (Maybe (Tuple String String))
-nameAndValue arr idx = do
-  elem <- arr ! idx
+nameAndValue :: Foreign -> F (Maybe (Tuple String String))
+nameAndValue elem = do
   name <- elem ! "name" >>= rnu readString
   value <- elem ! "value" >>= rnu readString
   checked <- elem ! "checked" >>= rnu readBoolean
