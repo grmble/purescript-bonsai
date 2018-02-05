@@ -17,12 +17,14 @@ where
 import Prelude
 
 import Bonsai.DOM (Document)
-import Control.Monad.Aff (Aff, Fiber)
+import Control.Alt (class Alt)
+import Control.Monad.Aff (Aff, Fiber, launchAff_)
 import Control.Monad.Aff.AVar (AVar)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
-import Data.Foldable (for_)
+import Control.Plus (class Plus)
+import Data.Foldable (fold, for_)
 import Data.Monoid (class Monoid)
 
 
@@ -42,10 +44,32 @@ data Cmd eff msg
 
 -- Cmd is a functor so VNodes/Events can be mapped
 instance cmdFunctor :: Functor (Cmd eff) where
+  -- use liftA1 to test bind instance
+  map = liftA1
+  {--
   map f (Cmd ms) =
     Cmd $ map f ms
   map f (TaskCmd task) =
     TaskCmd $ mapTask f task
+  --}
+
+instance cmdApply :: Apply (Cmd eff) where
+  apply = ap
+
+instance cmdApplicative :: Applicative (Cmd eff) where
+  pure x = Cmd [x]
+
+instance cmdBind :: Bind (Cmd eff) where
+  bind = bindCmd
+
+instance cmdMonad :: Monad (Cmd eff)
+
+-- define <|> as <> ... not much use, but it lets us define empty
+instance cmdAlt :: Alt (Cmd eff) where
+  alt = append
+
+instance cmdPlus :: Plus (Cmd eff) where
+  empty = Cmd []
 
 mapTask
   :: forall eff a b
@@ -53,15 +77,23 @@ mapTask
   -> (TaskContext eff a -> Aff eff Unit)
   -> (TaskContext eff b -> Aff eff Unit)
 mapTask f ta contextB =
-  let
-    emitA :: a -> Eff eff Unit
-    emitA as =
-      contextB.emitter $ f as
-    contextA :: TaskContext eff a
-    contextA =
-      contextB { emitter = emitA }
-  in
-    ta contextA
+  ta (contextB { emitter = \a -> contextB.emitter $ f a })
+
+
+bindCmd :: forall eff a b. Cmd eff a -> (a -> Cmd eff b) -> Cmd eff b
+bindCmd (Cmd []) _ = Cmd []
+bindCmd (Cmd as) f =
+  fold $ map f as
+bindCmd (TaskCmd ta) faCb =
+  TaskCmd \contextB ->
+    let emitterA a =
+          case faCb a of
+            Cmd bs -> do
+              for_ bs contextB.emitter
+            TaskCmd tb ->
+              launchAff_ $ tb contextB
+    in  ta (contextB { emitter = emitterA })
+
 
 -- | Emit helper for Tasks.
 -- |
