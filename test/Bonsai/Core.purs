@@ -3,7 +3,7 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, emptyCommand, program, pureCommand, simpleTask, unitTask)
+import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, program, simpleTask, unitTask)
 import Bonsai.Core (issueCommand, issueCommand')
 import Bonsai.DOM (DOM, ElementId(..), affF, elementById, textContent, window)
 import Bonsai.Html (button, div_, render, span, text, (!))
@@ -17,6 +17,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Free (Free)
+import Control.Plus (empty)
 import Data.Tuple (Tuple(..))
 import Test.JSDOM (jsdomWindow, fireClick)
 import Test.Unit (TestF, suite, test)
@@ -39,9 +40,9 @@ update :: forall eff. Msg -> Model -> Tuple (Cmd (console::CONSOLE,clienteff::CL
 update msg model =
   case msg of
     Inc ->
-      Tuple emptyCommand $ model + 1
+      Tuple empty $ model + 1
     Dec ->
-      Tuple emptyCommand $ model - 1
+      Tuple empty $ model - 1
     -- test compilation/types for some ways of starting tasks
     Foo ->
       Tuple (simpleTask simpleAff) model
@@ -52,7 +53,7 @@ update msg model =
     Boo ->
       Tuple (unitTask consoleAff) model
     TaskResult ->
-      Tuple emptyCommand $ model
+      Tuple empty $ model
 
 view :: Model -> VNode Msg
 view model =
@@ -114,7 +115,7 @@ tests =
       initialText <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "0" initialText
 
-      issueCommand' env $ pureCommand Inc
+      issueCommand' env $ pure Inc
       x1 <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "1" x1
 
@@ -124,7 +125,7 @@ tests =
       _  <- affF $
         elementById (ElementId "plusButton") env.document >>=
         fireClick
-      issueCommand' env emptyCommand
+      issueCommand' env empty
       x2 <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "2" x2
 
@@ -135,7 +136,7 @@ tests =
       initialText <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "0" initialText
 
-      let cmd = pureCommand Inc <> unitTask (delay (Milliseconds 200.0)) <> pureCommand Inc
+      let cmd = pure Inc <> unitTask (delay (Milliseconds 200.0)) <> pure Inc
       issueCommand' env cmd
       delay (Milliseconds 100.0)
       textAfterInc <- elementTextAfterRender env (ElementId "counter")

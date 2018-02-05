@@ -44,6 +44,7 @@ import Bonsai
 import Bonsai.Html
 import Bonsai.Html.Attributes
 import Bonsai.Html.Events
+import Control.Plus
 import Data.Maybe
 import Data.Tuple
 
@@ -54,7 +55,7 @@ data Msg
   | Dec
 
 update :: forall eff. Msg -> Model -> Tuple (Cmd eff Msg) Model
-update msg model = Tuple emptyCommand $
+update msg model = Tuple empty $
   case msg of
     Inc ->
       model + 1

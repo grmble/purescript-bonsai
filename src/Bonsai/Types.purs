@@ -7,8 +7,6 @@ module Bonsai.Types
   , delayUntilRendered
   , emitMessage
   , emittingTask
-  , emptyCommand
-  , pureCommand
   , simpleTask
   , unitTask
   )
@@ -38,6 +36,21 @@ foreign import data BONSAI :: Effect
 -- | the messages that will be emitted.
 -- | The asynchronous Task gets an emitter function
 -- | that it can use to emit messages at will.
+-- |
+-- | Cmd MUST be a Functor, so the type can be mapped
+-- | by the virtual dom.
+-- |
+-- | It is also a Monoid, this means commands can be combined by `<>`.
+-- | The combined commands are issued in sequence.
+-- |
+-- | It is also a Monad and Plus, this gives all the monad goodies plus
+-- | pure and empty.  `alt` is defined to be `append` -- the Alt instance
+-- | is mainly there for `empty`.
+-- |
+-- | I think it would be possible to define a parallel `apply` -
+-- | currently it's just Monad's `ap`, so the commands are processed in
+-- | sequence. It's always possible to do the fancy stuff using Aff
+-- | in the TaskCmd.
 data Cmd eff msg
   = Cmd (Array msg)
   | TaskCmd (TaskContext eff msg -> Aff eff Unit)
@@ -169,11 +182,3 @@ type TaskContext eff msg =
   , fiber :: AVar (Fiber eff Unit)
   , document :: Document
   }
-
--- | Produces an empty command.
-emptyCommand :: forall aff msg. Cmd aff msg
-emptyCommand = Cmd []
-
--- | Produces a pure command
-pureCommand :: forall aff msg. msg -> Cmd aff msg
-pureCommand msg = Cmd [msg]

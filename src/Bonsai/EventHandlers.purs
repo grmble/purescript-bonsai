@@ -46,9 +46,10 @@ where
 
 import Prelude
 
-import Bonsai (Cmd, emptyCommand, pureCommand)
+import Bonsai (Cmd)
 import Bonsai.DOM (copyFakeArray)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
+import Control.Plus (empty)
 import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, isNull, isUndefined, readBoolean, readInt, readNullOrUndefined, readString)
 import Data.Foreign.Index ((!))
@@ -65,7 +66,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 -- | For use with `on "click"`
 constHandler :: forall eff msg. msg -> Foreign -> F (Cmd eff msg)
 constHandler msg =
-  const $ pure $ pureCommand msg
+  const $ pure $ pure msg
 
 
 -- | Read the value of the target input element
@@ -78,7 +79,7 @@ targetValue event =
 -- | `on "input" (targetValueHandler MyMsg)`
 targetValueHandler :: forall eff msg. (String -> msg) -> Foreign -> F (Cmd eff msg)
 targetValueHandler fn ev =
-  map (pureCommand <<< fn) (targetValue ev)
+  map (pure <<< fn) (targetValue ev)
 
 
 -- | Read the value of target element's checked property
@@ -90,7 +91,7 @@ targetChecked event =
 -- | Event handler for target's checked property.
 targetCheckedHandler :: forall eff msg. (Boolean -> msg) -> Foreign -> F (Cmd eff msg)
 targetCheckedHandler fn ev =
-  map (pureCommand <<< fn) (targetChecked ev)
+  map (pure <<< fn) (targetChecked ev)
 
 
 -- ! Read the names and values of the target element's form.
@@ -131,11 +132,11 @@ enterKeyHandler fn ev =
   map convert (enterEscapeKey ev)
   where
     convert Nothing =
-      emptyCommand
+      empty
     convert (Just (Left _)) =
-      emptyCommand
+      empty
     convert (Just (Right s)) =
-      pureCommand $ fn s
+      pure $ fn s
 
 
 -- | Event handler for enter and escape keys.
@@ -144,11 +145,11 @@ enterEscapeKeyHandler enterFn escFn ev =
   map convert (enterEscapeKey ev)
   where
     convert Nothing =
-      emptyCommand
+      empty
     convert (Just (Left s)) =
-      pureCommand $ escFn s
+      pure $ escFn s
     convert (Just (Right s)) =
-      pureCommand $ enterFn s
+      pure $ enterFn s
 
 
 -- | Read names and values from a (fake) foreign array.
@@ -226,4 +227,4 @@ dataAttribute name event = do
 -- | It should be possible to memoize this on the attribute name.
 dataAttributeHandler :: forall eff msg. (String -> msg) -> String -> Foreign -> F (Cmd eff msg)
 dataAttributeHandler fn name ev =
-  map (pureCommand <<< fn) (dataAttribute name ev)
+  map (pure <<< fn) (dataAttribute name ev)

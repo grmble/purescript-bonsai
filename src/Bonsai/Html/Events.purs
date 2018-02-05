@@ -18,7 +18,6 @@ where
 
 import Prelude
 
-import Bonsai (pureCommand)
 import Bonsai.EventHandlers (constHandler, enterEscapeKeyHandler, enterKeyHandler, targetCheckedHandler, targetValueHandler)
 import Bonsai.VirtualDom (Property, Options, on, onWithOptions)
 
@@ -46,7 +45,7 @@ onCheckedChange fn =
 -- | Suboptimal click event handler.
 onClick :: forall msg. msg -> Property msg
 onClick msg =
-  on "click" (const $ pure $ pureCommand msg)
+  on "click" (const $ pure $ pure msg)
 
 
 -- | Suboptimal click handler that does not bubble.
