@@ -3,8 +3,8 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, emptyCommand, issueCommand, program, pureCommand, simpleTask, unitTask)
-import Bonsai.Core (delayUntilClean)
+import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, emptyCommand, program, pureCommand, simpleTask, unitTask)
+import Bonsai.Core (issueCommand, issueCommand')
 import Bonsai.DOM (DOM, ElementId(..), affF, elementById, textContent, window)
 import Bonsai.Html (button, div_, render, span, text, (!))
 import Bonsai.Html.Attributes (id_)
@@ -12,7 +12,6 @@ import Bonsai.Html.Events (onClick)
 import Bonsai.Types (TaskContext)
 import Bonsai.VirtualDom (VNode)
 import Control.Monad.Aff (Aff, Milliseconds(..), delay)
-import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
@@ -102,7 +101,6 @@ elementTextAfterRender
   -> ElementId
   -> Aff (dom::DOM|eff) String
 elementTextAfterRender env id = do
-  unsafeCoerceAff $ delayUntilClean env
   affF $ (\_ -> elementById id env.document >>= textContent) unit
 
 
@@ -116,7 +114,7 @@ tests =
       initialText <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "0" initialText
 
-      liftEff $ issueCommand env $ pureCommand Inc
+      issueCommand' env $ pureCommand Inc
       x1 <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "1" x1
 
@@ -126,6 +124,7 @@ tests =
       _  <- affF $
         elementById (ElementId "plusButton") env.document >>=
         fireClick
+      issueCommand' env emptyCommand
       x2 <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "2" x2
 
@@ -137,7 +136,7 @@ tests =
       Assert.equal "0" initialText
 
       let cmd = pureCommand Inc <> unitTask (delay (Milliseconds 200.0)) <> pureCommand Inc
-      liftEff $ issueCommand env cmd
+      issueCommand' env cmd
       delay (Milliseconds 100.0)
       textAfterInc <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "1" textAfterInc

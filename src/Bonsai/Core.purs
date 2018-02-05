@@ -4,9 +4,9 @@ module Bonsai.Core
   , ProgramState
 
   , debugProgram
-  , delayUntilClean
   , fullDebug
   , issueCommand
+  , issueCommand'
   , noDebug
   , program
   )
@@ -208,12 +208,17 @@ queueCommand env cmd =
         Left err -> emitError err
         Right _ -> pure unit
 
--- | Issue a command.
+-- | Issue a command - do not delay.
 -- |
 -- | For pure commands, this will send the messages and request a redraw.
 -- | For (asynchronous) task commands, the task will be started.
 -- |
--- | This can be used to start tasks, e.g. to initialize the model
+-- | This can be used to start tasks, e.g. to initialize the model.
+-- |
+-- | Note that Bonsai will render to the DOM some time in
+-- | the future via requestAnimationFrame.  If you depend
+-- | on the state of the DOM, you should use issueCommand'
+-- | which will delay until the model has been rendered.
 issueCommand
   :: forall bff eff model msg
   .  Program bff model msg
@@ -224,6 +229,17 @@ issueCommand env cmd = unsafeCoerceEff $ do
   if mustUpdate
     then updateAndRedraw env
     else pure unit
+
+-- | Issue a command and delay until the model has been rendered.
+issueCommand'
+  :: forall bff eff model msg
+  .  Program bff model msg
+  -> Cmd bff msg
+  -> Aff (bonsai::BONSAI|eff) Unit
+issueCommand' env cmd = do
+  liftEff' $ issueCommand env cmd
+  unsafeCoerceAff $ delayUntilClean env
+
 
 -- | Unsafe coerce the effects of a Cmd.
 unsafeCoerceCmd :: forall eff1 eff2 msg. Cmd eff1 msg -> Cmd eff2 msg

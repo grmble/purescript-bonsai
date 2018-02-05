@@ -23,10 +23,6 @@ import Data.Foreign (F)
 -- | Run the F when the model is clean.
 -- |
 -- | Any errors will be turned into exceptions.
--- |
--- | If you are trying to use this after an issueCommand
--- | when testing, use Bonsai.Core.delayUntilClean
--- | and coerce the Affs as needed.
 delayF :: forall eff effT msg a. TaskContext effT msg -> (Unit -> F a) -> Aff (dom::DOM|eff) Unit
 delayF ctx fa = do
   delayUntilRendered ctx
