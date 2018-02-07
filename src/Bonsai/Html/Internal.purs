@@ -200,7 +200,7 @@ withOptionalAttribute elem Nothing =
 withOptionalAttribute elem (Just prop) =
   withAttribute elem prop
 
--- ! Add an optional style (operator !?)
+-- ! Add an optional style (operator #!?)
 withOptionalStyle
   :: forall h
   .  HasStyle h

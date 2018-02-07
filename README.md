@@ -3,9 +3,9 @@
 Functional web programming in Purescript.  Heavily inspired by Elm & using
 the Elm Virtual DOM.
 
-*STATUS*: Functional, but unstable API - the breaking changes are still coming.
+**STATUS**: Getting ready for 1.0, with some breaking changes still coming.
 
-It does have:
+What is there:
 
 * Elm's Virtual DOM as backend
 * Event/command system for functional updates to the virtual DOM
@@ -17,9 +17,18 @@ It does have:
 
 ## Documentation and examples
 
+Note that these are for the last published version - these examples
+will not work for the current master.  They will be brought up to date,
+but right now they are not.
+
 * A tutorial with simple examples is at http://purescript-bonsai-docs.readthedocs.io/en/latest/
 * Reference documentation https://pursuit.purescript.org/packages/purescript-bonsai/
-* An example application is at https://github.com/grmble/purescript-bonsai-todo
+
+These examples are tracking the current master:
+
+* An example todo application is at https://github.com/grmble/purescript-bonsai-todo
+* A form handling demo is at https://github.com/grmble/purescript-forms-demo
+
 
 ## Getting started
 
@@ -29,7 +38,7 @@ Start a fresh project
 mkdir your-project
 cd your-project
 pulp init
-bower install --save purescript-bonsai
+bower install --save 'grmble/purescript-bonsai#master'
 pulp build
 ```
 
