@@ -1,5 +1,7 @@
 # Purescript Bonsai
 
+[![Build Status](https://travis-ci.org/grmble/purescript-bonsai.svg?branch=master)](https://travis-ci.org/grmble/purescript-bonsai)
+
 Functional web programming in Purescript.  Heavily inspired by Elm & using
 the Elm Virtual DOM.
 
