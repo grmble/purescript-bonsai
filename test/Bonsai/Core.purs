@@ -6,11 +6,9 @@ import Prelude
 import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, program, simpleTask, unitTask)
 import Bonsai.Core (issueCommand, issueCommand')
 import Bonsai.DOM (DOM, ElementId(..), affF, elementById, textContent, window)
-import Bonsai.Html (button, div_, render, span, text, (!))
-import Bonsai.Html.Attributes (id_)
-import Bonsai.Html.Events (onClick)
+import Bonsai.JSDOM (jsdomWindow, fireClick)
 import Bonsai.Types (TaskContext)
-import Bonsai.VirtualDom (VNode)
+import Bonsai.VirtualDom (VNode, node, on, property, text)
 import Control.Monad.Aff (Aff, Milliseconds(..), delay)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
@@ -19,7 +17,6 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Free (Free)
 import Control.Plus (empty)
 import Data.Tuple (Tuple(..))
-import Test.JSDOM (jsdomWindow, fireClick)
 import Test.Unit (TestF, suite, test)
 import Test.Unit.Assert as Assert
 
@@ -57,11 +54,21 @@ update msg model =
 
 view :: Model -> VNode Msg
 view model =
-  render $ div_ $ do
-    span ! id_ "counter" $ do
-      text $ show model
-    button ! id_ "plusButton" ! onClick Inc $ text "+"
-    button ! id_ "minusButton" ! onClick Dec $ text "-"
+  node "div" []
+    [ node "span" [ property "id" "counter" ]
+        [ text $ show model ]
+    , node "button"
+        [ property "id" "plusButton"
+        , on "click" (const $ pure $ pure Inc)
+        ]
+        [ text "+" ]
+    , node "button"
+        [ property "id" "minusButton"
+        , on "click" (const $ pure $ pure Dec)
+        ]
+        [ text "-" ]
+    ]
+
 
 simpleAff :: forall eff. Aff (clienteff::CLIENTEFF|eff) Msg
 simpleAff =

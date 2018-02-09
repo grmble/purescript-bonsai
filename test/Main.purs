@@ -10,11 +10,9 @@ import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Test.Bonsai.Core (CLIENTEFF)
 import Test.Bonsai.Core as BCore
-import Test.Bonsai.DOM as BDOM
 import Test.Bonsai.EventHandlers as BEventHandlers
 import Test.Unit.Console (TESTOUTPUT)
 import Test.Unit.Main (runTest)
-import Unsafe.Coerce (unsafeCoerce)
 
 main :: forall t1.
   Eff
@@ -31,4 +29,3 @@ main :: forall t1.
 main = runTest do
   BCore.tests
   BEventHandlers.tests
-  unsafeCoerce $ BDOM.tests

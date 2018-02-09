@@ -1,8 +1,8 @@
 {
   "name": "purescript-bonsai",
-  "homepage": "https://github.com/grmble/purescript-bonsai",
+  "homepage": "https://grmble.github.io/purescript-bonsai/",
   "description": "Functional web programming in purescript",
-  "license": "BSD-3-Clause",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git://github.com/grmble/purescript-bonsai.git"
@@ -16,21 +16,11 @@
   "dependencies": {
     "purescript-prelude": "^3.1.1",
     "purescript-console": "^3.0.0",
-    "purescript-functions": "^3.0.0",
-    "purescript-foreign": "^4.0.1",
-    "purescript-foreign-generic": "^5.0.0",
-    "purescript-tuples": "^4.1.0",
-    "purescript-refs": "^3.0.0",
-    "purescript-transformers": "^3.5.0",
-    "purescript-sequences": "^1.0.3",
-    "purescript-either": "^3.1.0",
-    "purescript-bifunctors": "^3.0.0",
-    "purescript-aff": "^4.0.1",
-    "purescript-free": "^4.2.0",
-    "purescript-exceptions": "^3.1.0"
+    "purescript-bonsai-vdom": "grmble/purescript-bonsai-vdom#master"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0",
-    "purescript-test-unit": "^13.0.0"
+    "purescript-test-unit": "^13.0.0",
+    "purescript-bonsai-jsdom": "grmble/purescript-bonsai-jsdom#master"
   }
 }
