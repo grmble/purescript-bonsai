@@ -41,6 +41,7 @@ mkdir your-project
 cd your-project
 pulp init
 bower install --save 'grmble/purescript-bonsai#master'
+bower install --save 'grmble/purescript-bonsai-html#master'
 pulp build
 ```
 
