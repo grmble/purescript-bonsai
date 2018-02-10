@@ -1,0 +1,91 @@
+#sourceLink {
+  position: absolute;
+  right: 0px;
+  top: 0px;
+}
+
+/*
+
+no nested divs for specifying padding
+
+*/
+/*
+.pure-g > div, .pure-u-1 {
+  box-sizing: border-box;
+}
+*/
+
+.l-box {
+  padding: 1em;
+  box-sizing: border-box;
+}
+
+.l-box-lr {
+  padding-left: 1em;
+  padding-right: 1em;
+  box-sizing: border-box;
+}
+
+/*
+
+
+todo table styling
+
+
+*/
+
+table {
+  min-width: 100%;
+}
+
+.col-done {
+  width: 1em;
+}
+
+.col-prio {
+  width: 3em;
+}
+
+.col-todo {
+}
+
+
+
+.tag-list {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+
+/*
+
+
+hide creation/completion date for widths < 768 (pure-u-md)
+
+
+
+*/
+@media all and (max-width: 767px) {
+
+  .col-crea {
+    display: none;
+  }
+
+  .col-comp {
+    display: none;
+  }
+
+}
+
+@media all and (min-width: 768px) {
+
+  .col-crea {
+    width: 6em;
+  }
+
+  .col-comp {
+    width: 6em;
+  }
+
+}
