@@ -16,7 +16,7 @@ import Prelude
 
 import Bonsai.DOM (DOM, Document, Element, ElementId(ElementId), Window, appendChild, clearElement, document, effF, elementById, foreignErrorMsg, requestAnimationFrame)
 import Bonsai.Debug (debugJsonObj, debugTiming, logJsonObj, startTiming)
-import Bonsai.Types (BONSAI, Cmd(..), TaskContext)
+import Bonsai.Types (BONSAI, Cmd(..), TaskContext, unsafeCoerceCmd)
 import Bonsai.VirtualDom (VNode, render, diff, applyPatches)
 import Control.Monad.Aff (Aff, joinFiber, launchAff_, liftEff', runAff_, suspendAff)
 import Control.Monad.Aff.AVar (AVAR, AVar, makeEmptyVar, putVar, takeVar)
@@ -34,7 +34,6 @@ import Data.Foldable (for_)
 import Data.Foreign (F)
 import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
-import Unsafe.Coerce (unsafeCoerce)
 
 
 -- | Program describes the Bonsai program.
@@ -240,10 +239,6 @@ issueCommand' env cmd = do
   liftEff' $ issueCommand env cmd
   unsafeCoerceAff $ delayUntilClean env
 
-
--- | Unsafe coerce the effects of a Cmd.
-unsafeCoerceCmd :: forall eff1 eff2 msg. Cmd eff1 msg -> Cmd eff2 msg
-unsafeCoerceCmd cmd = unsafeCoerce cmd
 
 -- | Obtain a task context for a bonsai program.
 -- |
