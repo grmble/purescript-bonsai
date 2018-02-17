@@ -5,7 +5,7 @@ import Prelude
 
 import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, program, simpleTask, unitTask)
 import Bonsai.Core (issueCommand, issueCommand')
-import Bonsai.DOM (DOM, ElementId(..), affF, elementById, textContent, window)
+import Bonsai.DOM (DOM, Document, ElementId(..), affF, elementById, textContent, window)
 import Bonsai.JSDOM (jsdomWindow, fireClick)
 import Bonsai.Types (TaskContext)
 import Bonsai.VirtualDom (VNode, node, on, property, text)
@@ -70,8 +70,8 @@ view model =
     ]
 
 
-simpleAff :: forall eff. Aff (clienteff::CLIENTEFF|eff) Msg
-simpleAff =
+simpleAff :: forall eff. Document -> Aff (clienteff::CLIENTEFF|eff) Msg
+simpleAff _ =
   pure TaskResult
 
 emittingAff :: forall eff
@@ -88,8 +88,8 @@ pureAff ctx = do
   emitMessage ctx TaskResult
   pure unit
 
-consoleAff :: forall eff.  Aff (console::CONSOLE|eff) Unit
-consoleAff = do
+consoleAff :: forall eff.  Document -> Aff (console::CONSOLE|eff) Unit
+consoleAff _ = do
   liftEff $ log "Hello, world"
   pure unit
 
@@ -143,7 +143,7 @@ tests =
       initialText <- elementTextAfterRender env (ElementId "counter")
       Assert.equal "0" initialText
 
-      let cmd = pure Inc <> unitTask (delay (Milliseconds 200.0)) <> pure Inc
+      let cmd = pure Inc <> unitTask (const (delay (Milliseconds 200.0))) <> pure Inc
       issueCommand' env cmd
       delay (Milliseconds 100.0)
       textAfterInc <- elementTextAfterRender env (ElementId "counter")

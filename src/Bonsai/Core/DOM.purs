@@ -15,7 +15,7 @@ where
 import Prelude
 
 import Bonsai.DOM (DOM, ElementId, affF, elementById, focusElement, selectElementText, setLocationHash)
-import Bonsai.Types (Cmd, TaskContext, delayUntilRendered, emittingTask)
+import Bonsai.Types (Cmd, TaskContext, delayUntilRendered, emittingTask, unitTask)
 import Control.Monad.Aff (Aff)
 import Data.Foreign (F)
 
@@ -55,5 +55,5 @@ focusSelectCmd id =
 -- | Note that this has to start with a # sign
 locationHashCmd :: forall eff msg. String -> Cmd (dom::DOM|eff) msg
 locationHashCmd hash =
-  emittingTask \ctx ->
-    affF $ setLocationHash hash ctx.document
+  unitTask \doc ->
+    affF $ setLocationHash hash doc
