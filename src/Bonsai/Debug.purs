@@ -8,14 +8,20 @@
 -- | It does have the advantage that we don't require
 -- | a Show instance for everyting.s
 module Bonsai.Debug
-  (StartTiming, debugJsonObj, debugTiming, logObj, logJson, logJsonObj, logTiming, startTiming)
+  ( StartTiming
+  , debugJsonObj
+  , debugTiming
+  , logObj
+  , logJson
+  , logJsonObj
+  , logTiming
+  , startTiming)
 where
 
 import Prelude
 
-import Bonsai.Types (BONSAI)
-import Control.Monad.Eff (Eff)
-import Data.Foreign (Foreign)
+import Effect (Effect)
+import Foreign (Foreign)
 
 -- class DebugWarning
 --
@@ -23,46 +29,38 @@ import Data.Foreign (Foreign)
 
 -- | Log a message and object to the console.
 foreign import logObj
-  :: forall eff a
-  .  String -> a -> Eff (bonsai::BONSAI|eff) Unit
+  :: forall a
+  .  String -> a -> Effect Unit
 
 -- | Log a message and JSON.stringify of object to the console.
 foreign import logJson
-  :: forall eff a
-  .  String -> a -> Eff (bonsai::BONSAI|eff) Unit
+  :: forall a
+  .  String -> a -> Effect Unit
 
 
 -- | Log a message, JSON.stringify and the object to the console.
 foreign import logJsonObj
-  :: forall eff a
-  .  String -> a -> Eff (bonsai::BONSAI|eff) Unit
+  :: forall a
+  .  String -> a -> Effect Unit
 
 newtype StartTiming =
   StartTiming Foreign
 
 -- | Obtain a start time for timing function execution
-foreign import startTiming
-  :: forall eff
-  .  Eff (bonsai::BONSAI|eff) StartTiming
+foreign import startTiming :: Effect StartTiming
 
 -- | Log timing information
-foreign import logTiming
-  :: forall eff
-  .  String -> StartTiming -> Eff (bonsai::BONSAI|eff) Unit
+foreign import logTiming :: String -> StartTiming -> Effect Unit
 
 -- | Log timing if in debug mode
-debugTiming
-  :: forall eff
-  .  Boolean -> String -> StartTiming -> Eff (bonsai::BONSAI|eff) Unit
+debugTiming :: Boolean -> String -> StartTiming -> Effect Unit
 debugTiming dbg msg start =
   if dbg
     then logTiming msg start
     else pure unit
 
 -- | Log json obj if in debug mode
-debugJsonObj
-  :: forall eff a
-  .  Boolean -> String -> a -> Eff (bonsai::BONSAI|eff) Unit
+debugJsonObj :: forall a. Boolean -> String -> a -> Effect Unit
 debugJsonObj dbg msg obj =
   if dbg
     then logJsonObj msg obj

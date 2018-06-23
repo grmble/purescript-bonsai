@@ -46,13 +46,13 @@ where
 
 import Prelude
 
-import Bonsai (Cmd)
+import Bonsai.Types (Cmd)
 import Bonsai.DOM (copyFakeArray)
 import Bonsai.VirtualDom (Options, Property, on, onWithOptions, defaultOptions)
 import Control.Plus (empty)
 import Data.Either (Either(..))
-import Data.Foreign (F, Foreign, isNull, isUndefined, readBoolean, readInt, readNullOrUndefined, readString)
-import Data.Foreign.Index ((!))
+import Foreign (F, Foreign, isNull, isUndefined, readBoolean, readInt, readNullOrUndefined, readString)
+import Foreign.Index ((!))
 import Data.List as List
 import Data.List.NonEmpty as NEL
 import Data.Map (Map, fromFoldable)
@@ -64,7 +64,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 -- | Event handler that always sends the same command
 -- |
 -- | For use with `on "click"`
-constHandler :: forall eff msg. msg -> Foreign -> F (Cmd eff msg)
+constHandler :: forall msg. msg -> Foreign -> F (Cmd msg)
 constHandler msg =
   const $ pure $ pure msg
 
@@ -77,7 +77,7 @@ targetValue event =
 -- | Event handler for target value.
 -- |
 -- | `on "input" (targetValueHandler MyMsg)`
-targetValueHandler :: forall eff msg. (String -> msg) -> Foreign -> F (Cmd eff msg)
+targetValueHandler :: forall msg. (String -> msg) -> Foreign -> F (Cmd msg)
 targetValueHandler fn ev =
   map (pure <<< fn) (targetValue ev)
 
@@ -89,7 +89,7 @@ targetChecked event =
 
 
 -- | Event handler for target's checked property.
-targetCheckedHandler :: forall eff msg. (Boolean -> msg) -> Foreign -> F (Cmd eff msg)
+targetCheckedHandler :: forall msg. (Boolean -> msg) -> Foreign -> F (Cmd msg)
 targetCheckedHandler fn ev =
   map (pure <<< fn) (targetChecked ev)
 
@@ -127,7 +127,7 @@ enterEscapeKey event = do
 
 
 -- | Event handler for enter key.
-enterKeyHandler :: forall eff msg. (String -> msg) -> Foreign -> F (Cmd eff msg)
+enterKeyHandler :: forall msg. (String -> msg) -> Foreign -> F (Cmd msg)
 enterKeyHandler fn ev =
   map convert (enterEscapeKey ev)
   where
@@ -140,7 +140,7 @@ enterKeyHandler fn ev =
 
 
 -- | Event handler for enter and escape keys.
-enterEscapeKeyHandler :: forall eff msg. (String -> msg) -> (String -> msg) -> Foreign -> F (Cmd eff msg)
+enterEscapeKeyHandler :: forall msg. (String -> msg) -> (String -> msg) -> Foreign -> F (Cmd msg)
 enterEscapeKeyHandler enterFn escFn ev =
   map convert (enterEscapeKey ev)
   where
@@ -225,6 +225,6 @@ dataAttribute name event = do
 -- | Event handler extracting a data attribute.
 -- |
 -- | It should be possible to memoize this on the attribute name.
-dataAttributeHandler :: forall eff msg. (String -> msg) -> String -> Foreign -> F (Cmd eff msg)
+dataAttributeHandler :: forall msg. (String -> msg) -> String -> Foreign -> F (Cmd msg)
 dataAttributeHandler fn name ev =
   map (pure <<< fn) (dataAttribute name ev)

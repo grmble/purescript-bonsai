@@ -3,7 +3,6 @@
   "author": "Juergen Gmeiner <spamless.juergen@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "jsdom": "^11.6.2",
-    "jsdom-simulant": "^1.1.2"
+    "jsdom": "^11.11.0"
   }
 }

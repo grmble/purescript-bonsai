@@ -14,13 +14,13 @@
     "output"
   ],
   "dependencies": {
-    "purescript-prelude": "^3.1.1",
-    "purescript-console": "^3.0.0",
-    "purescript-bonsai-vdom": "grmble/purescript-bonsai-vdom#master"
+    "purescript-prelude": "^4.0.1",
+    "purescript-console": "^4.1.0",
+    "purescript-bonsai-vdom": "grmble/purescript-bonsai-vdom#purs_0_12"
   },
   "devDependencies": {
-    "purescript-psci-support": "^3.0.0",
-    "purescript-test-unit": "^13.0.0",
-    "purescript-bonsai-jsdom": "grmble/purescript-bonsai-jsdom#master"
+    "purescript-psci-support": "^4.0.0",
+    "purescript-test-unit": "^14.0.0",
+    "purescript-bonsai-jsdom": "grmble/purescript-bonsai-jsdom#purs_0_12"
   }
 }

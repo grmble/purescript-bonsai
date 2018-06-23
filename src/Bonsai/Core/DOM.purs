@@ -14,16 +14,16 @@ where
 
 import Prelude
 
-import Bonsai.DOM (DOM, ElementId, affF, elementById, focusElement, selectElementText, setLocationHash)
+import Bonsai.DOM (ElementId, affF, elementById, focusElement, selectElementText, setLocationHash)
 import Bonsai.Types (Cmd, TaskContext, delayUntilRendered, emittingTask, unitTask)
-import Control.Monad.Aff (Aff)
-import Data.Foreign (F)
+import Effect.Aff (Aff)
+import Foreign (F)
 
 
 -- | Run the F when the model is clean.
 -- |
 -- | Any errors will be turned into exceptions.
-delayF :: forall eff effT msg a. TaskContext effT msg -> (Unit -> F a) -> Aff (dom::DOM|eff) Unit
+delayF :: forall msg a. TaskContext msg -> (Unit -> F a) -> Aff Unit
 delayF ctx fa = do
   delayUntilRendered ctx
   _ <- affF (fa unit)
@@ -33,7 +33,7 @@ delayF ctx fa = do
 -- | DOM Side-Effect Cmd that will set the focus to the input field.
 -- |
 -- | This will run delayed once the current model is rendered.
-focusCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
+focusCmd :: forall msg. ElementId -> Cmd msg
 focusCmd id =
   emittingTask \ctx ->
     delayF ctx (\_ -> elementById id ctx.document >>= focusElement)
@@ -42,7 +42,7 @@ focusCmd id =
 -- | DOM Side-Effect Cmd that will set the focus and select the input field
 -- |
 -- | This will run delayed once the current model is rendered.
-focusSelectCmd :: forall eff msg. ElementId -> Cmd (dom::DOM|eff) msg
+focusSelectCmd :: forall msg. ElementId -> Cmd msg
 focusSelectCmd id =
   emittingTask \ctx ->
     delayF ctx
@@ -53,7 +53,7 @@ focusSelectCmd id =
 -- | DOM Side-Effect Cmd that will set the location hash.
 -- |
 -- | Note that this has to start with a # sign
-locationHashCmd :: forall eff msg. String -> Cmd (dom::DOM|eff) msg
+locationHashCmd :: forall msg. String -> Cmd msg
 locationHashCmd hash =
   unitTask \doc ->
     affF $ setLocationHash hash doc

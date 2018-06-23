@@ -3,24 +3,21 @@ where
 
 import Prelude
 
-import Bonsai (BONSAI, Cmd, Program, emitMessage, emittingTask, program, simpleTask, unitTask)
+import Bonsai (Cmd, Program, emitMessage, emittingTask, program, simpleTask, unitTask)
 import Bonsai.Core (issueCommand, issueCommand')
-import Bonsai.DOM (DOM, Document, ElementId(..), affF, elementById, textContent, window)
+import Bonsai.DOM (Document, ElementId(..), affF, elementById, textContent, window)
 import Bonsai.JSDOM (jsdomWindow, fireClick)
 import Bonsai.Types (TaskContext)
 import Bonsai.VirtualDom (VNode, node, on, property, text)
-import Control.Monad.Aff (Aff, Milliseconds(..), delay)
-import Control.Monad.Eff (Eff, kind Effect)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Exception (EXCEPTION)
+import Effect.Aff (Aff, Milliseconds(..), delay)
+import Effect (Effect)
+import Effect.Class (liftEffect)
+import Effect.Console (log)
 import Control.Monad.Free (Free)
 import Control.Plus (empty)
 import Data.Tuple (Tuple(..))
 import Test.Unit (TestF, suite, test)
 import Test.Unit.Assert as Assert
-
-foreign import data CLIENTEFF :: Effect
 
 type Model = Int
 
@@ -33,7 +30,7 @@ data Msg
   | Boo
   | TaskResult
 
-update :: forall eff. Msg -> Model -> Tuple (Cmd (console::CONSOLE,clienteff::CLIENTEFF|eff) Msg) Model
+update :: Msg -> Model -> Tuple (Cmd Msg) Model
 update msg model =
   case msg of
     Inc ->
@@ -70,32 +67,29 @@ view model =
     ]
 
 
-simpleAff :: forall eff. Document -> Aff (clienteff::CLIENTEFF|eff) Msg
+simpleAff :: Document -> Aff Msg
 simpleAff _ =
   pure TaskResult
 
-emittingAff :: forall eff
-  .  TaskContext (clienteff::CLIENTEFF|eff) Msg
-  -> Aff (clienteff::CLIENTEFF|eff) Unit
+emittingAff :: TaskContext Msg -> Aff Unit
 emittingAff ctx = do
   emitMessage ctx TaskResult
   pure unit
 
-pureAff :: forall eff
-  .  TaskContext eff Msg
-  -> Aff eff Unit
+pureAff :: TaskContext Msg
+  -> Aff Unit
 pureAff ctx = do
   emitMessage ctx TaskResult
   pure unit
 
-consoleAff :: forall eff.  Document -> Aff (console::CONSOLE|eff) Unit
+consoleAff :: Document -> Aff Unit
 consoleAff _ = do
-  liftEff $ log "Hello, world"
+  liftEffect $ log "Hello, world"
   pure unit
 
 -- test using issueCommand from a main program
 -- this is only here to make sure it compiles
-main :: Eff (bonsai::BONSAI,dom::DOM,exception::EXCEPTION) Unit
+main :: Effect Unit
 main = do
   prg <- window # program (ElementId "main") update view 0
   issueCommand prg (simpleTask simpleAff)
@@ -104,19 +98,19 @@ main = do
 
 
 elementTextAfterRender
-  :: forall eff model msg
-  .  Program eff model msg
+  :: forall model msg
+  .  Program model msg
   -> ElementId
-  -> Aff (dom::DOM|eff) String
+  -> Aff String
 elementTextAfterRender env id = do
   affF $ (\_ -> elementById id env.document >>= textContent) unit
 
 
-tests :: forall eff. Free (TestF (bonsai::BONSAI,dom::DOM,clienteff::CLIENTEFF,console::CONSOLE,exception::EXCEPTION|eff)) Unit
+tests :: Free TestF Unit
 tests =
   suite "Bonsai.Core" do
     test "program/taskContext" $ do
-      env <- liftEff $
+      env <- liftEffect $
         jsdomWindow """<html><body id="main"></body></html>""" #
         program (ElementId "main") update view 0
       initialText <- elementTextAfterRender env (ElementId "counter")
@@ -137,7 +131,7 @@ tests =
       Assert.equal "2" x2
 
     test "cmd monoid" do
-      env <- liftEff $
+      env <- liftEffect $
         jsdomWindow """<html><body id="main"></body></html>""" #
         program (ElementId "main") update view 0
       initialText <- elementTextAfterRender env (ElementId "counter")

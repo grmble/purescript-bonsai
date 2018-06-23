@@ -10,4 +10,4 @@ where
 
 import Bonsai.Core (Program, ProgramState, debugProgram, fullDebug, noDebug, program)
 import Bonsai.DOM (ElementId(..), Window, window)
-import Bonsai.Types (BONSAI, Cmd(..), emitMessage, emittingTask, simpleTask, unitTask)
+import Bonsai.Types (Cmd(..), emitMessage, emittingTask, simpleTask, unitTask)
