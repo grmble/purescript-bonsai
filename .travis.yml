@@ -6,5 +6,7 @@ install:
   - npm install -g bower purescript pulp
 script:
   - npm install
-  - bower install
+  - bower install --production
+  - pulp build
+  - bower install --production
   - pulp test
