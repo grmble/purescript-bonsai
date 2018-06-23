@@ -66,7 +66,7 @@ data Msg
   = Inc
   | Dec
 
-update :: forall eff. Msg -> Model -> Tuple (Cmd eff Msg) Model
+update ::  Msg -> Model -> Tuple (Cmd Msg) Model
 update msg model = Tuple empty $
   case msg of
     Inc ->
