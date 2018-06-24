@@ -8,5 +8,5 @@ script:
   - npm install
   - bower install --production
   - pulp build
-  - bower install --production
+  - bower install
   - pulp test
