@@ -28,8 +28,10 @@ but right now they are not.
 
 These examples are tracking the current master:
 
-* An example todo application is at https://github.com/grmble/purescript-bonsai-todo
+* An example todo application is at https://github.com/grmble/purescript-bonsai-todo 
+  (live example at https://grmble.github.io/purescript-bonsai-todo/)
 * A form handling demo is at https://github.com/grmble/purescript-forms-demo
+  (live example at https://grmble.github.io/purescript-bonsai-forms/)
 
 
 ## Getting started
